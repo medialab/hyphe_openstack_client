@@ -132,3 +132,17 @@ describe("Client - Compute - Keypair", () => {
     }
   });
 });
+
+describe("Client - Compute - Server", () => {
+  before(async () => {
+    await client.authenticate(OPENSTACK_USER, OPENSTACK_PASSWORD);
+  });
+
+  it("get compute server list with a valid region should work", async () => {
+    try {
+      const result = await client.getComputeServers("UK1");
+    } catch (e) {
+      assert.fail(`Should not throw an exception ${e}`);
+    }
+  });
+});

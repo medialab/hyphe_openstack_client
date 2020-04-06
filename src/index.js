@@ -1,5 +1,6 @@
 "use strict";
 import axios from "axios";
+import { jsonToQueryString } from "./util";
 
 export class OpenStackClient {
   /**
@@ -96,19 +97,24 @@ export class OpenStackClient {
     );
   }
 
+  //
+  // ~~~ IMAGES ~~~
+  //
+
   /**
    * Retrieve the list of available images for the specified region.
    *
    * @param {string} regionId The id of openstack region
+   * @param {object?} options See https://docs.openstack.org/api-ref/image/v2/index.html?expanded=list-images-detail#id7 for the list of available query string parameters
    * @returns {Promise<Array<Image>>}
    */
-  async getImages(regionId) {
+  async getImages(regionId, options = {}) {
     try {
       const url = this._findEndpoint("image", regionId, "public");
 
       //TODO: Make a get version instead of suffix with v2
       const response = await axios({
-        url: `${url}/v2/images`,
+        url: `${url}/v2/images${jsonToQueryString(options)}`,
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -122,17 +128,22 @@ export class OpenStackClient {
     }
   }
 
+  //
+  // ~~~ COMPUTE FLAVOR ~~~
+  //
+
   /**
    * Retrieve the list of available flavors for Nova (ie. compute).
    *
    * @param {string} regionId Openstack region id
+   * @param {object?} options See https://docs.openstack.org/api-ref/compute/?expanded=create-server-detail,list-servers-detail,list-flavors-detail#id197 for the list of available query string parameters
    * @returns {Promise<Array<Flavor>>}
    */
-  async getComputeFlavors(regionId) {
+  async getComputeFlavors(regionId, options = {}) {
     try {
       const url = this._findEndpoint("compute", regionId, "public");
       const response = await axios({
-        url: `${url}/flavors`,
+        url: `${url}/flavors${jsonToQueryString(options)}`,
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -176,17 +187,22 @@ export class OpenStackClient {
     }
   }
 
+  //
+  // ~~~ COMPUTE KEYPAIRS ~~~
+  //
+
   /**
    * Retrieve the list of available SSH keyof the user for Nova (ie. compute).
    *
    * @param {string} regionId Openstack region id
+   * @param {object?} options See https://docs.openstack.org/api-ref/compute/?expanded=create-server-detail,list-servers-detail,list-flavors-detail,list-keypairs-detail#id230 for the list of available query string parameters
    * @returns {Promise<Keypair>}
    */
-  async getComputeKeypairs(regionId) {
+  async getComputeKeypairs(regionId, options = {}) {
     try {
       const url = this._findEndpoint("compute", regionId, "public");
       const response = await axios({
-        url: `${url}/os-keypairs`,
+        url: `${url}/os-keypairs${jsonToQueryString(options)}`,
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -258,6 +274,53 @@ export class OpenStackClient {
       throw new Error("Failed to retrieve the compute keypair list", e);
     }
   }
+
+  //
+  // ~~~ COMPUTE SERVERS ~~~
+  //
+
+  /**
+   * Retrieve the list of server on the compute service.
+   * @param {string} regionId Openstack region id
+   * @param {object} options See https://docs.openstack.org/api-ref/compute/?expanded=list-servers-detail#list-servers-request for the list of available query string parameters
+   */
+  async getComputeServers(regionId, options) {
+    try {
+      const url = this._findEndpoint("compute", regionId, "public");
+      const response = await axios({
+        url: `${url}/servers${jsonToQueryString(options)}`,
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Auth-Token": this.token
+        },
+        responseType: "json"
+      });
+      return response.data.servers;
+    } catch (e) {
+      throw new Error("Failed to retrieve the compute server list", e);
+    }
+  }
+
+  async getComputeServer(regionId, serverId) {}
+
+  async createComputeServer(regionId, serverId) {}
+
+  async removeComputeServer(regionId, serverId) {}
+
+  async stopComputeServer(regionId, serverId) {}
+
+  async startComputeServer(regionId, serverId) {}
+
+  async suspendComputeServer(regionId, serverId) {}
+
+  async resumeComputeServer(regionId, serverId) {}
+
+  async pauseComputeServer(regionId, serverId) {}
+
+  async unpauseComputeServer(regionId, serverId) {}
+
+  async actionComputeServer(regionId, serverId) {}
 
   /**
    * Find the endpoint url for the specified service, region and type.

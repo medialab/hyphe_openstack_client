@@ -7,7 +7,9 @@
     "clean": "rimraf dist specs",
     "build": "webpack --env dev && webpack --env build",
     "dev": "webpack --progress --colors --watch --env dev",
-    "test": "mocha --timeout 10000 --require @babel/polyfill --require @babel/register"
+    "test:unit": "mocha './test/{,/**}/*.test.js' --timeout 10000 --require @babel/polyfill --require @babel/register --full-trace",
+    "test:paid": "mocha './test/{,/**}/*.paid.js' --timeout 10000 --require @babel/polyfill --require @babel/register --full-trace",
+    "test": "npm run test:unit && npm run test:paid"
   },
   "author": "OuestWare",
   "devDependencies": {
