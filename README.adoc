@@ -1,0 +1,6 @@
+= Openstack Client API for Hyphe
+
+== Useful links
+
+ * Documentation : https://developer.openstack.org/
+ * OVH API endpoint : https://auth.cloud.ovh.net/v3/

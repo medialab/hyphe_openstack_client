@@ -1,0 +1,36 @@
+{
+  "name": "openstack-client",
+  "version": "1.0.0",
+  "description": "OpenStack API client for hyphe",
+  "main": "./lib/openstack-client.js",
+  "scripts": {
+    "clean": "rimraf dist specs",
+    "build": "webpack --env dev && webpack --env build",
+    "dev": "webpack --progress --colors --watch --env dev",
+    "test": "mocha --timeout 10000 --require @babel/polyfill --require @babel/register"
+  },
+  "author": "OuestWare",
+  "devDependencies": {
+    "@babel/core": "^7.9.0",
+    "@babel/polyfill": "^7.8.7",
+    "@babel/preset-env": "^7.9.0",
+    "@babel/register": "^7.9.0",
+    "babel-eslint": "^10.1.0",
+    "babel-loader": "^8.1.0",
+    "chai": "^4.1.2",
+    "cross-env": "^5.2.0",
+    "eslint": "^5.0.1",
+    "eslint-loader": "^2.0.0",
+    "jsdom": "11.11.0",
+    "jsdom-global": "3.0.2",
+    "mocha": "^4.0.1",
+    "mocha-headless-chrome": "^2.0.3",
+    "nyc": "^13.1.0",
+    "webpack": "^4.12.2",
+    "webpack-cli": "^3.3.11",
+    "yargs": "^10.0.3"
+  },
+  "dependencies": {
+    "axios": "^0.19.2"
+  }
+}
