@@ -38,19 +38,16 @@ export class OpenStackClient {
     };
 
     try {
-      const response = await axios({
-        url: `${this.url}/auth/tokens`,
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        data: body,
-        responseType: "json"
-      });
+      const response = await this._callApi(
+        `${this.url}/auth/tokens`,
+        "POST",
+        false,
+        body
+      );
       this.token = response.headers["x-subject-token"];
       this.catalog = response.data.token.catalog;
     } catch (e) {
-      throw new Error("Failed to authenticate the user", e);
+      throw new Error(`Fail to authenticate user ${login}: ${e.message}`);
     }
   }
 
@@ -63,9 +60,7 @@ export class OpenStackClient {
   async getRegions(serviceType) {
     // if the catalog property is missing, throw an error
     if (!this.catalog) {
-      throw new Error(
-        "Catalog is missing or empty. You should call the `authenticate` method before"
-      );
+      throw new Error(`Catalog is missing or empty. Did you authenticate ?`);
     }
 
     // Compute the specified service
@@ -109,22 +104,16 @@ export class OpenStackClient {
    * @returns {Promise<Array<Image>>}
    */
   async getImages(regionId, options = {}) {
+    const url = this._findEndpoint("image", regionId, "public");
     try {
-      const url = this._findEndpoint("image", regionId, "public");
-
-      //TODO: Make a get version instead of suffix with v2
-      const response = await axios({
-        url: `${url}/v2/images${jsonToQueryString(options)}`,
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Auth-Token": this.token
-        },
-        responseType: "json"
-      });
+      const response = await this._callApi(
+        `${url}/v2/images${jsonToQueryString(options)}`,
+        "GET",
+        true
+      );
       return response.data.images;
     } catch (e) {
-      throw new Error("Failed to retrieve the image list", e);
+      throw new Error(`Fail to retrieve the image list: ${e.message}`);
     }
   }
 
@@ -140,25 +129,20 @@ export class OpenStackClient {
    * @returns {Promise<Array<Flavor>>}
    */
   async getComputeFlavors(regionId, options = {}) {
+    const url = this._findEndpoint("compute", regionId, "public");
     try {
-      const url = this._findEndpoint("compute", regionId, "public");
-      const response = await axios({
-        url: `${url}/flavors${jsonToQueryString(options)}`,
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Auth-Token": this.token
-        },
-        responseType: "json"
-      });
-
+      const response = await this._callApi(
+        `${url}/flavors${jsonToQueryString(options)}`,
+        "GET",
+        true
+      );
       return await Promise.all(
         response.data.flavors.map(flavor => {
           return this.getComputeFlavor(regionId, flavor.id);
         })
       );
     } catch (e) {
-      throw new Error("Failed to retrieve the compute flavor list", e);
+      throw new Error(`Fail to retrieve the compute flavor list: ${e.message}`);
     }
   }
 
@@ -170,20 +154,18 @@ export class OpenStackClient {
    * @returns {Promise<Flavor>}
    */
   async getComputeFlavor(regionId, flavorId) {
+    const url = this._findEndpoint("compute", regionId, "public");
     try {
-      const url = this._findEndpoint("compute", regionId, "public");
-      const response = await axios({
-        url: `${url}/flavors/${flavorId}`,
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Auth-Token": this.token
-        },
-        responseType: "json"
-      });
+      const response = await this._callApi(
+        `${url}/flavors/${flavorId}`,
+        "GET",
+        true
+      );
       return response.data.flavor;
     } catch (e) {
-      throw new Error("Failed to retrieve the compute flavor detail", e);
+      throw new Error(
+        `Fail to retrieve detail for flavor ${flavorId}: ${e.message}`
+      );
     }
   }
 
@@ -199,20 +181,16 @@ export class OpenStackClient {
    * @returns {Promise<Keypair>}
    */
   async getComputeKeypairs(regionId, options = {}) {
+    const url = this._findEndpoint("compute", regionId, "public");
     try {
-      const url = this._findEndpoint("compute", regionId, "public");
-      const response = await axios({
-        url: `${url}/os-keypairs${jsonToQueryString(options)}`,
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Auth-Token": this.token
-        },
-        responseType: "json"
-      });
+      const response = await this._callApi(
+        `${url}/os-keypairs${jsonToQueryString(options)}`,
+        "GET",
+        true
+      );
       return response.data.keypairs;
     } catch (e) {
-      throw new Error("Failed to retrieve the compute keypair list", e);
+      throw new Error(`Fail to retrieve compute keypair list: ${e.message}`);
     }
   }
 
@@ -233,21 +211,17 @@ export class OpenStackClient {
       }
     };
 
+    const url = this._findEndpoint("compute", regionId, "public");
     try {
-      const url = this._findEndpoint("compute", regionId, "public");
-      const response = await axios({
-        url: `${url}/os-keypairs`,
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Auth-Token": this.token
-        },
-        responseType: "json",
-        data: body
-      });
+      const response = await this._callApi(
+        `${url}/os-keypairs`,
+        "POST",
+        true,
+        body
+      );
       return response.data.keypair;
     } catch (e) {
-      throw new Error("Failed to retrieve the compute keypair list", e);
+      throw new Error(`Fail to create/save ssh key ${name}: ${e.message}`);
     }
   }
 
@@ -259,19 +233,15 @@ export class OpenStackClient {
    * @param {string} name Name of the SSH key to delete
    */
   async deleteComputeKeypair(regionId, name) {
+    const url = this._findEndpoint("compute", regionId, "public");
     try {
-      const url = this._findEndpoint("compute", regionId, "public");
-      const response = await axios({
-        url: `${url}/os-keypairs/${name}`,
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Auth-Token": this.token
-        },
-        responseType: "json"
-      });
+      const response = await this._callApi(
+        `${url}/os-keypairs/${name}`,
+        "DELETE",
+        true
+      );
     } catch (e) {
-      throw new Error("Failed to retrieve the compute keypair list", e);
+      throw new Error(`Fail to delete ssh key ${name}: ${e.message}`);
     }
   }
 
@@ -281,46 +251,187 @@ export class OpenStackClient {
 
   /**
    * Retrieve the list of server on the compute service.
+   *
    * @param {string} regionId Openstack region id
    * @param {object} options See https://docs.openstack.org/api-ref/compute/?expanded=list-servers-detail#list-servers-request for the list of available query string parameters
+   * @returns {Promise<Array<Server>>} List of server ()
    */
   async getComputeServers(regionId, options) {
     try {
       const url = this._findEndpoint("compute", regionId, "public");
-      const response = await axios({
-        url: `${url}/servers${jsonToQueryString(options)}`,
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Auth-Token": this.token
-        },
-        responseType: "json"
-      });
+      const response = await this._callApi(
+        `${url}/servers${jsonToQueryString(options)}`,
+        "GET",
+        true
+      );
+      //TODO: follow links
       return response.data.servers;
     } catch (e) {
-      throw new Error("Failed to retrieve the compute server list", e);
+      throw new Error(`Fail to retrieve the compute server list: ${e.message}`);
     }
   }
 
-  async getComputeServer(regionId, serverId) {}
+  /**
+   * Create a compute server.
+   *
+   * @param {string} regionId Openstack region id
+   * @param {string} name Name of the server
+   * @param {string} imageId Openstack image ID
+   * @param {string} imageId Openstack flavor ID
+   * @returns {Promise<Server>} Created server (@see https://docs.openstack.org/api-ref/compute/?expanded=create-server-detail,list-servers-detail,list-flavors-detail,list-keypairs-detail,add-associate-floating-ip-addfloatingip-action-deprecated-detail,pause-server-pause-action-detail,reboot-server-reboot-action-detail#id12 )
+   */
+  async createComputeServer(regionId, name, imageId, flavorId) {
+    const body = {
+      server: {
+        name: name,
+        imageRef: imageId,
+        flavorRef: flavorId
+      }
+    };
+    const url = this._findEndpoint("compute", regionId, "public");
+    try {
+      const response = await this._callApi(
+        `${url}/servers`,
+        "POST",
+        true,
+        body
+      );
+      // TODO: follow links
+      return response.data.server;
+    } catch (e) {
+      throw new Error(`Fail to create compute server ${name}: ${e.message}`);
+    }
+  }
 
-  async createComputeServer(regionId, serverId) {}
+  /**
+   * Retrieve a compute server by its ID.
+   * For the response type @see https://docs.openstack.org/api-ref/compute/?expanded=list-servers-detail,show-server-details-detail#id30
+   *
+   * @param {string} regionId Openstack region id
+   * @param {string} serverId Openstack server ID
+   * @returns {Promise<Server>} Created server
+   */
+  async getComputeServer(regionId, serverId) {
+    const url = this._findEndpoint("compute", regionId, "public");
+    try {
+      const response = await this._callApi(
+        `${url}/servers/${serverId}`,
+        "GET",
+        true
+      );
+      return response.data.server;
+    } catch (e) {
+      throw new Error(
+        `Fail to get detail of compute server ${serverId}: ${e.message}`
+      );
+    }
+  }
 
-  async removeComputeServer(regionId, serverId) {}
+  /**
+   * Delete a compute server by its ID.
+   *
+   * @param {string} regionId Openstack region id
+   * @param {string} serverId Openstack server ID
+   */
+  async deleteComputeServer(regionId, serverId) {
+    const url = this._findEndpoint("compute", regionId, "public");
+    try {
+      const response = await this._callApi(
+        `${url}/servers/${serverId}`,
+        "DELETE",
+        true
+      );
+    } catch (e) {
+      throw new Error(
+        `Fail to delete compute server ${serverId}: ${e.message}`
+      );
+    }
+  }
 
-  async stopComputeServer(regionId, serverId) {}
+  /**
+   * Perfoms the action on the compute server.
+   *
+   * @param {string} regionId Openstack region id
+   * @param {string} serverId Openstack compute server id
+   * @param {object} actionBody The action body to add to the API call
+   * @throws {Error} if the action is not performed
+   */
+  async actionComputeServer(regionId, serverId, actionBody) {
+    const url = this._findEndpoint("compute", regionId, "public");
+    try {
+      const response = await this._callApi(
+        `${url}/servers/${serverId}/action`,
+        "POST",
+        true,
+        actionBody
+      );
+    } catch (e) {
+      throw new Error(
+        `Failed to exec action ${actionBody} on server ${serverid}`
+      );
+    }
+  }
 
-  async startComputeServer(regionId, serverId) {}
+  async startComputeServer(regionId, serverId) {
+    actionComputeServer(regionId, serverId, { "os-stop": null });
+  }
 
-  async suspendComputeServer(regionId, serverId) {}
+  async stopComputeServer(regionId, serverId) {
+    actionComputeServer(regionId, serverId, { "os-stop": null });
+  }
 
-  async resumeComputeServer(regionId, serverId) {}
+  async rebootComputeServer(regionId, serverId, rebootType = "SOFT") {
+    actionComputeServer(regionId, serverId, { reboot: { type: rebootType } });
+  }
 
-  async pauseComputeServer(regionId, serverId) {}
+  async suspendComputeServer(regionId, serverId) {
+    actionComputeServer(regionId, serverId, { suspend: null });
+  }
 
-  async unpauseComputeServer(regionId, serverId) {}
+  async resumeComputeServer(regionId, serverId) {
+    actionComputeServer(regionId, serverId, { resume: null });
+  }
 
-  async actionComputeServer(regionId, serverId) {}
+  async pauseComputeServer(regionId, serverId) {
+    actionComputeServer(regionId, serverId, { pause: null });
+  }
+
+  async unpauseComputeServer(regionId, serverId) {
+    actionComputeServer(regionId, serverId, { unpause: null });
+  }
+
+  /**
+   * Make a HTTP call the OpenStack endpoint.
+   *
+   * @param {string} url API endpoint url
+   * @param {string} method HTTP method
+   * @param {boolean} auth Is endpoint requires auth ?
+   * @param {string} body HTTP body of the call
+   * @returns {Promise<AxiosResponse>} The axios response
+   * @throws {Error} If an error occured (ie. the code is not a 20X)
+   */
+  async _callApi(url, method, auth, body) {
+    const headers = {
+      "Content-Type": "application/json"
+    };
+    if (auth) {
+      headers["X-Auth-Token"] = this.token;
+    }
+    try {
+      const response = await axios({
+        url: url,
+        method: method,
+        headers: headers,
+        responseType: "json",
+        data: body
+      });
+      return response;
+    } catch (e) {
+      throw new Error(
+        `API returns ${e.response.status} - ${JSON.stringify(e.response.data)}`
+      );
+    }
+  }
 
   /**
    * Find the endpoint url for the specified service, region and type.
@@ -350,7 +461,7 @@ export class OpenStackClient {
 
     if (!endpoint) {
       throw new Error(
-        `There is no ${regionId} / ${type} endpoint in service ${serviceType}`
+        `There is no ${regionId} / ${type} endpoint for service ${serviceType}`
       );
     }
 
