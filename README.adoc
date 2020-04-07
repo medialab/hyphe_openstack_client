@@ -1,6 +1,59 @@
 = Openstack Client API for Hyphe
 
-== Useful links
+== How to use it
+
+This is a complete example :
+
+[source,javascript]
+----
+// instanciate the client
+const client = new OpenStackClient("https://auth.cloud.ovh.net/v3");
+
+// authenticate the user
+client.authenticate("user", "password");
+
+// retrieve the available regions for the 'compute' service.
+const regions = client.getRegions("compute")
+
+// Get the available images for a region
+const images = await client.getImages(regions[0].region_id);
+
+// Get the available 'compute' flavor for a region
+const flavors = await client.getComputeFlavors(regions[0].region_id)
+
+// Create a server
+const server = await client.createComputeServer( regions[0].region_id, "my-new-server-name", images[0].id, flavors[0].id );
+
+...
+----
+
+== Development
+
+=== Build
+
+To build the lib, just run `npm run build`
+
+=== Tests
+
+Tests are based on the https://auth.cloud.ovh.net/v3/[OVH API].
+To run them *you must have* the environment variables `OPENSTACK_USER` & `OPENSTACK_PASSWORD` :
+
+[source,bash]
+----
+export OPENSTACK_USER="xxxxx"
+export OPENSTACK_PASSWORD="yyyy"
+----
+
+There is two kind of tests :
+
+* *paid* : You can run them with the command `npm run test:paid`. Those tests spawn some servers, so they are not free of charge.
+* *free* : You can run them with the command `npm run test:unit`.
+
+NOTE: The command `npm test` run all tests (free & paid).
+
+== Annexe
+
+=== Useful links
 
  * Documentation : https://developer.openstack.org/
  * OVH API endpoint : https://auth.cloud.ovh.net/v3/
