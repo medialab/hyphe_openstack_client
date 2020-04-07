@@ -9,8 +9,7 @@
     "dev": "webpack --progress --colors --watch --env dev",
     "test:unit": "mocha './test/{,/**}/*.test.js' --timeout 10000 --require @babel/polyfill --require @babel/register --full-trace",
     "test:paid": "mocha './test/{,/**}/*.paid.js' --timeout 10000 --require @babel/polyfill --require @babel/register --full-trace",
-    "test": "npm run test:unit && npm run test:paid",
-    "postinstall": "npm run build"
+    "test": "npm run test:unit && npm run test:paid"
   },
   "author": "OuestWare",
   "husky": {
