@@ -2,7 +2,7 @@
   "name": "openstack-client",
   "version": "1.0.0",
   "description": "OpenStack API client for hyphe",
-  "main": "./lib/openstack-client.js",
+  "main": "./lib/openstack-client.min.js",
   "scripts": {
     "clean": "rimraf lib",
     "build": "webpack --env build",
