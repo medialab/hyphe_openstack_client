@@ -64,6 +64,10 @@ There is two kind of tests :
 
 NOTE: The command `npm test` run all tests (free & paid).
 
+There is also a_manual_ test to allow you to test the full deploy of an hyphe on a server.`npm run test:deploy`.
+This command will spawn a server with hyphe, so it's really useful to test the entire cycle.
+But be careful, the server is not deleted at the end of the test, so you have to do it **manually** !
+
 == Annexe
 
 === Useful links
