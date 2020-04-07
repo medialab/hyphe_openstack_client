@@ -1,6 +1,6 @@
 "use strict";
 import axios from "axios";
-import { jsonToQueryString } from "./util";
+import { deepMerge, jsonToQueryString } from "./util";
 
 export class OpenStackClient {
   /**
@@ -283,10 +283,11 @@ export class OpenStackClient {
    * @param {string} regionId Openstack region id
    * @param {string} name Name of the server
    * @param {string} imageId Openstack image ID
-   * @param {string} imageId Openstack flavor ID
+   * @param {string} flavorId Openstack flavor ID
+   * @param {object} options Optionals parameters for the server creation (@see https://docs.openstack.org/api-ref/compute/?expanded=create-server-detail#id11)
    * @returns {Promise<Server>} Created server (@see https://docs.openstack.org/api-ref/compute/?expanded=create-server-detail,list-servers-detail,list-flavors-detail,list-keypairs-detail,add-associate-floating-ip-addfloatingip-action-deprecated-detail,pause-server-pause-action-detail,reboot-server-reboot-action-detail#id12 )
    */
-  async createComputeServer(regionId, name, imageId, flavorId) {
+  async createComputeServer(regionId, name, imageId, flavorId, options = {}) {
     const body = {
       server: {
         name: name,
@@ -300,9 +301,8 @@ export class OpenStackClient {
         `${url}/servers`,
         "POST",
         true,
-        body
+        deepMerge(body, { server: options })
       );
-      // TODO: follow links and make a deepmerge ?
       return response.data.server;
     } catch (e) {
       throw new Error(`Fail to create compute server ${name}: ${e.message}`);

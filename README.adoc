@@ -27,6 +27,19 @@ const server = await client.createComputeServer( regions[0].region_id, "my-new-s
 ...
 ----
 
+On `createComputeServer` you can add at the end of the method's params,
+an objet that match the following optional params : https://docs.openstack.org/api-ref/compute/?expanded=create-server-detail#id11
+
+For example, it can be useful to upload a bash script that will be executed once the server is launched :
+
+[source,javascript]
+----
+const script = "echo 'test'"
+const server = await client.createComputeServer( regions[0].region_id, "my-new-server-name", images[0].id, flavors[0].id, {user_data: btoa(script)} );
+----
+
+
+
 == Development
 
 === Build
