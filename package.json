@@ -5,7 +5,7 @@
   "main": "./lib/openstack-client.min.js",
   "scripts": {
     "clean": "rimraf lib",
-    "build": "webpack --env build",
+    "build": "npm run clean && webpack --env build",
     "dev": "webpack --progress --colors --watch --env dev",
     "test:unit": "mocha './test/{,/**}/*.test.js' --timeout 10000 --require @babel/polyfill --require @babel/register --full-trace",
     "test:paid": "mocha './test/{,/**}/*.paid.js' --timeout 10000 --require @babel/polyfill --require @babel/register --full-trace",
@@ -13,6 +13,11 @@
     "postinstall": "npm run build"
   },
   "author": "OuestWare",
+  "husky": {
+    "hooks": {
+      "pre-commit": "npm run test:unit && npm run build"
+    }
+  },
   "devDependencies": {
     "@babel/core": "^7.9.0",
     "@babel/polyfill": "^7.8.7",
@@ -24,6 +29,7 @@
     "cross-env": "^5.2.0",
     "eslint": "^5.0.1",
     "eslint-loader": "^2.0.0",
+    "husky": "^4.2.3",
     "jsdom": "11.11.0",
     "jsdom-global": "3.0.2",
     "mocha": "^4.0.1",
