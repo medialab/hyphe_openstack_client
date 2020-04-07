@@ -4,8 +4,8 @@
   "description": "OpenStack API client for hyphe",
   "main": "./lib/openstack-client.js",
   "scripts": {
-    "clean": "rimraf dist specs",
-    "build": "webpack --env dev && webpack --env build",
+    "clean": "rimraf lib",
+    "build": "webpack --env build",
     "dev": "webpack --progress --colors --watch --env dev",
     "test:unit": "mocha './test/{,/**}/*.test.js' --timeout 10000 --require @babel/polyfill --require @babel/register --full-trace",
     "test:paid": "mocha './test/{,/**}/*.paid.js' --timeout 10000 --require @babel/polyfill --require @babel/register --full-trace",
@@ -27,7 +27,6 @@
     "jsdom": "11.11.0",
     "jsdom-global": "3.0.2",
     "mocha": "^4.0.1",
-    "mocha-headless-chrome": "^2.0.3",
     "nyc": "^13.1.0",
     "webpack": "^4.12.2",
     "webpack-cli": "^3.3.11",
