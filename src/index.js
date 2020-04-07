@@ -260,11 +260,10 @@ export class OpenStackClient {
     try {
       const url = this._findEndpoint("compute", regionId, "public");
       const response = await this._callApi(
-        `${url}/servers${jsonToQueryString(options)}`,
+        `${url}/servers/detail${jsonToQueryString(options)}`,
         "GET",
         true
       );
-      //TODO: follow links
       return response.data.servers;
     } catch (e) {
       throw new Error(`Fail to retrieve the compute server list: ${e.message}`);
@@ -296,7 +295,7 @@ export class OpenStackClient {
         true,
         body
       );
-      // TODO: follow links
+      // TODO: follow links and make a deepmerge ?
       return response.data.server;
     } catch (e) {
       throw new Error(`Fail to create compute server ${name}: ${e.message}`);
