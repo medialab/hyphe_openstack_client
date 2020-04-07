@@ -195,7 +195,9 @@ export class OpenStackClient {
         "GET",
         true
       );
-      return response.data.keypairs;
+      return response.data.keypairs.map(item => {
+        return item.keypair;
+      });
     } catch (e) {
       throw new Error(`Fail to retrieve compute keypair list: ${e.message}`);
     }
