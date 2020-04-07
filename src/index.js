@@ -19,6 +19,10 @@ export class OpenStackClient {
    * @param {string} password password of the openstack user
    */
   async authenticate(login, password) {
+    // Init
+    this.token = null;
+    this.catalog = null;
+
     // JSON body of the auth query
     const body = {
       auth: {
@@ -44,7 +48,10 @@ export class OpenStackClient {
         false,
         body
       );
-      this.token = response.headers["x-subject-token"];
+      this.token = {
+        value: response.headers["x-subject-token"],
+        expired_at: Date.parse(response.data.token.expires_at)
+      };
       this.catalog = response.data.token.catalog;
     } catch (e) {
       throw new Error(`Fail to authenticate user ${login}: ${e.message}`);
@@ -414,7 +421,13 @@ export class OpenStackClient {
       "Content-Type": "application/json"
     };
     if (auth) {
-      headers["X-Auth-Token"] = this.token;
+      if (!this.token) {
+        throw new Error("Not authenticated");
+      }
+      if (this.token.expired_at < Date.now()) {
+        throw new Error("Token is expired");
+      }
+      headers["X-Auth-Token"] = this.token.value;
     }
     try {
       const response = await axios({
