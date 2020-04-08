@@ -38,8 +38,6 @@ const script = "echo 'test'"
 const server = await client.createComputeServer( regions[0].region_id, "my-new-server-name", images[0].id, flavors[0].id, {user_data: btoa(script)} );
 ----
 
-
-
 == Development
 
 === Build
@@ -48,13 +46,19 @@ To build the lib, just run `npm run build`
 
 === Tests
 
-Tests are based on the https://auth.cloud.ovh.net/v3/[OVH API].
-To run them *you must have* the environment variables `OPENSTACK_USER` & `OPENSTACK_PASSWORD` :
+To run them *you must have* those environment variables `:
 
 [source,bash]
 ----
-export OPENSTACK_USER="xxxxx"
-export OPENSTACK_PASSWORD="yyyy"
+# FOR OVH we unset the domain & project
+unset  OPENSTACK_DOMAIN
+unset OPENSTACK_PROJECT
+export OPENSTACK_USER="XXX"
+export OPENSTACK_PASSWORD="YYY"
+export OPENSTACK_URL="https://auth.cloud.ovh.net/v3"
+export OPENSTACK_REGION="UK1"
+export OPENSTACK_IMAGE="Debian 10"
+export OPENSTACK_FLAVOR="s1-2"
 ----
 
 There is two kind of tests :
@@ -67,6 +71,22 @@ NOTE: The command `npm test` run all tests (free & paid).
 There is also a _manual_ test to allow you to test the full deploy of an hyphe on a server.`npm run test:deploy`.
 This command will spawn a server with hyphe, so it's really useful to test the entire cycle.
 But be careful, the server is not deleted at the end of the test, so you have to do it **manually** !
+
+To use it you must have those environment variables (ie. add the ssh keys) :
+
+[source,bash]
+----
+unset  OPENSTACK_DOMAIN
+unset OPENSTACK_PROJECT
+export OPENSTACK_USER="XXX"
+export OPENSTACK_PASSWORD="YYY"
+export OPENSTACK_URL="https://auth.cloud.ovh.net/v3"
+export OPENSTACK_REGION="UK1"
+export OPENSTACK_IMAGE="Debian 10"
+export OPENSTACK_FLAVOR="s1-2"
+export OPENSTACK_SSHKEY_NAME="my-ssh-key";
+export OPENSTACK_SSHKEY_PUB=$(cat ~/.ssh/id_rsa.pub)
+----
 
 == Annexe
 

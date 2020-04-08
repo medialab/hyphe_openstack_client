@@ -15,10 +15,12 @@ export class OpenStackClient {
   /**
    * Authenticate the user with it's login / password.
    *
-   * @param {string} login login of the openstack user
-   * @param {string} password password of the openstack user
+   * @param {string} login Login of the openstack user
+   * @param {string} password Password of the openstack user
+   * @param {string?} domain Domain of the openstack user. By default it's `Default`
+   * @param {string?} project Openstack project name
    */
-  async authenticate(login, password) {
+  async authenticate(login, password, domain = "Default", project) {
     // Init
     this.token = null;
     this.catalog = null;
@@ -33,17 +35,25 @@ export class OpenStackClient {
               name: login,
               password: password,
               domain: {
-                name: "Default"
+                name: domain
               }
             }
           }
         }
       }
     };
+    if (project) {
+      body.auth.scope = {
+        project: {
+          name: project,
+          domain: { name: domain }
+        }
+      };
+    }
 
     try {
       const response = await this._callApi(
-        `${this.url}/auth/tokens`,
+        `${this.url}/auth/tokens?nocatalog`,
         "POST",
         false,
         body
@@ -52,9 +62,26 @@ export class OpenStackClient {
         value: response.headers["x-subject-token"],
         expired_at: Date.parse(response.data.token.expires_at)
       };
-      this.catalog = response.data.token.catalog;
+      await this.getCatalog();
     } catch (e) {
       throw new Error(`Fail to authenticate user ${login}: ${e.message}`);
+    }
+  }
+
+  /**
+   * Retrieve the catalog of the OpenStack API and set it on the client.
+   * This method is used in the auth process.
+   */
+  async getCatalog() {
+    try {
+      const response = await this._callApi(
+        `${this.url}/auth/catalog`,
+        "GET",
+        true
+      );
+      this.catalog = response.data.catalog;
+    } catch (e) {
+      throw new Error(`Fail to retrieve the catalog: ${e.message}`);
     }
   }
 
@@ -456,6 +483,9 @@ export class OpenStackClient {
    * @returns {string} The endpoint url
    */
   _findEndpoint(serviceType, regionId, type) {
+    if (!this.catalog) {
+      throw new Error(`Catalog is missing or empty. Did you authenticate ?`);
+    }
     // Get the specified service
     const service = this.catalog
       // Get the endpoint list for the specified service

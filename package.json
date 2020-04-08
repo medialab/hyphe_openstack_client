@@ -7,8 +7,8 @@
     "clean": "rimraf lib",
     "build": "npm run clean && webpack --env build",
     "dev": "webpack --progress --colors --watch --env dev",
-    "test:unit": "mocha './test/{,/**}/*.test.js' --timeout 10000 --require @babel/polyfill --require @babel/register --full-trace",
-    "test:paid": "mocha './test/{,/**}/*.paid.js' --timeout 10000 --require @babel/polyfill --require @babel/register --full-trace",
+    "test:unit": "mocha './test/{,/**}/*.test.js' --timeout 20000 --require @babel/polyfill --require @babel/register --full-trace",
+    "test:paid": "mocha './test/{,/**}/*.paid.js' --timeout 20000 --require @babel/polyfill --require @babel/register --full-trace",
     "test:deploy": "mocha './test/full-deploy.js' --timeout 3600000 --require @babel/polyfill --require @babel/register --full-trace",
     "test": "npm run test:unit && npm run test:paid"
   },

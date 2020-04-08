@@ -5,12 +5,17 @@ import { OpenStackClient } from "../src/index";
 chai.expect();
 const assert = chai.assert;
 
+const OPENSTACK_URL = process.env.OPENSTACK_URL;
 const OPENSTACK_USER = process.env.OPENSTACK_USER;
 const OPENSTACK_PASSWORD = process.env.OPENSTACK_PASSWORD;
+const OPENSTACK_DOMAIN = process.env.OPENSTACK_DOMAIN;
+const OPENSTACK_PROJECT = process.env.OPENSTACK_PROJECT;
+const OPENSTACK_REGION = process.env.OPENSTACK_REGION;
+const OPENSTACK_IMAGE = process.env.OPENSTACK_IMAGE;
+const OPENSTACK_FLAVOR = process.env.OPENSTACK_FLAVOR;
+const OPENSTACK_SSHKEY_NAME = process.env.OPENSTACK_SSHKEY_NAME;
+const OPENSTACK_SSHKEY_PUB = process.env.OPENSTACK_SSHKEY_PUB;
 
-const minOvhFlavor = "s1-2";
-const serverImage = "Debian 10";
-const sshKeyName = "bsimard";
 const serverName = "hyphe-openstack-client-fulltest";
 
 /**
@@ -30,33 +35,47 @@ function read(filepath) {
 describe("Hyphe deploy", () => {
   it("Full deployment should work", async () => {
     try {
-      const client = new OpenStackClient("https://auth.cloud.ovh.net/v3");
+      const client = new OpenStackClient(OPENSTACK_URL);
 
       // Auth
-      await client.authenticate(OPENSTACK_USER, OPENSTACK_PASSWORD);
+      await client.authenticate(
+        OPENSTACK_USER,
+        OPENSTACK_PASSWORD,
+        OPENSTACK_DOMAIN,
+        OPENSTACK_PROJECT
+      );
 
       // Search a debian image
-      const image = (await client.getImages("UK1", {
-        name: serverImage
+      const image = (await client.getImages(OPENSTACK_REGION, {
+        name: OPENSTACK_IMAGE
       })).shift();
       console.log("Image found", image);
 
       // Search the min flavor
-      const flavor = (await client.getComputeFlavors("UK1"))
+      const flavor = (await client.getComputeFlavors(OPENSTACK_REGION))
         .filter(item => {
-          return item.name === minOvhFlavor;
+          return item.name === OPENSTACK_FLAVOR;
         })
         .shift();
       console.log("Flavor found", flavor);
 
       // Search SSH Key
-      //await client.setComputeKeypair("UK1", sshKeyName, sshKeyPub);
-      const sshKey = (await client.getComputeKeypairs("UK1", { limit: 10 }))
+      //await client.setComputeKeypair(OPENSTACK_REGION, sshKeyName, sshKeyPub);
+      let sshKey = (await client.getComputeKeypairs(OPENSTACK_REGION))
         .filter(item => {
-          return item.name === sshKeyName;
+          return item.name === OPENSTACK_SSHKEY_NAME;
         })
         .shift();
-      console.log("SSH Key found", sshKey);
+      if (sshKey) {
+        console.log("SSH Key found", sshKey);
+      } else {
+        sshKey = await client.setComputeKeypair(
+          OPENSTACK_REGION,
+          OPENSTACK_SSHKEY_NAME,
+          OPENSTACK_SSHKEY_PUB
+        );
+        console.log("SSH Key added", sshKey);
+      }
 
       // Convert shell script to base64
       // TODO: make a call to the github repo to retrieve the script
@@ -67,7 +86,7 @@ describe("Hyphe deploy", () => {
 
       // Create the server
       let server = await client.createComputeServer(
-        "UK1",
+        OPENSTACK_REGION,
         serverName,
         image.id,
         flavor.id,
@@ -80,7 +99,7 @@ describe("Hyphe deploy", () => {
       while (!isRunning) {
         // waiting 2 sec
         await new Promise(resolve => setTimeout(resolve, 2000));
-        server = await client.getComputeServer("UK1", server.id);
+        server = await client.getComputeServer(OPENSTACK_REGION, server.id);
         console.log(`${server.progress} %`);
         if (server.status === "ACTIVE") {
           console.log("Server is ready !", server);
