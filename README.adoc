@@ -50,15 +50,15 @@ To run them *you must have* those environment variables `:
 
 [source,bash]
 ----
-FOR UNIT TEST
-unset OPENSTACK_PROJECT
-export OPENSTACK_DOMAIN="Default"
+# FOR UNIT TEST
 export OPENSTACK_USER="XXX"
-export OPENSTACK_PASSWORD="YYY"
-export OPENSTACK_URL="https://auth.cloud.ovh.net/v3"
-export OPENSTACK_REGION="UK1"
-export OPENSTACK_IMAGE="Debian 10"
-export OPENSTACK_FLAVOR="s1-2"
+export OPENSTACK_PASSWORD="YYYYY"
+export OPENSTACK_DOMAIN="Default"
+export OPENSTACK_PROJECT="ZZZZZ"
+export OPENSTACK_URL="https://auth.vexxhost.net/v3"
+export OPENSTACK_REGION="sjc1"
+export OPENSTACK_IMAGE="Debian GNU/Linux 10 (buster) [2019-12-02]"
+export OPENSTACK_FLAVOR="v2-standard-1"
 # FOR FULL DEPLOY
 export OPENSTACK_SSHKEY_NAME="my-ssh-key";
 export OPENSTACK_SSHKEY_PUB=$(cat ~/.ssh/id_rsa.pub)
@@ -72,6 +72,8 @@ There is two kind of tests :
 NOTE: The command `npm test` run all tests (free & paid).
 
 NOTE: You can use the *paid* test to deploy a server, just comment the `after` method
+
+IMPORTANT: Unit test fails on network for OVH
 
 == Annexe
 
