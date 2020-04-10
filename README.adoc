@@ -50,15 +50,18 @@ To run them *you must have* those environment variables `:
 
 [source,bash]
 ----
-# FOR OVH we unset the domain & project
-unset  OPENSTACK_DOMAIN
+FOR UNIT TEST
 unset OPENSTACK_PROJECT
+export OPENSTACK_DOMAIN="Default"
 export OPENSTACK_USER="XXX"
 export OPENSTACK_PASSWORD="YYY"
 export OPENSTACK_URL="https://auth.cloud.ovh.net/v3"
 export OPENSTACK_REGION="UK1"
 export OPENSTACK_IMAGE="Debian 10"
 export OPENSTACK_FLAVOR="s1-2"
+# FOR FULL DEPLOY
+export OPENSTACK_SSHKEY_NAME="my-ssh-key";
+export OPENSTACK_SSHKEY_PUB=$(cat ~/.ssh/id_rsa.pub)
 ----
 
 There is two kind of tests :
@@ -68,25 +71,7 @@ There is two kind of tests :
 
 NOTE: The command `npm test` run all tests (free & paid).
 
-There is also a _manual_ test to allow you to test the full deploy of an hyphe on a server.`npm run test:deploy`.
-This command will spawn a server with hyphe, so it's really useful to test the entire cycle.
-But be careful, the server is not deleted at the end of the test, so you have to do it **manually** !
-
-To use it you must have those environment variables (ie. add the ssh keys) :
-
-[source,bash]
-----
-unset  OPENSTACK_DOMAIN
-unset OPENSTACK_PROJECT
-export OPENSTACK_USER="XXX"
-export OPENSTACK_PASSWORD="YYY"
-export OPENSTACK_URL="https://auth.cloud.ovh.net/v3"
-export OPENSTACK_REGION="UK1"
-export OPENSTACK_IMAGE="Debian 10"
-export OPENSTACK_FLAVOR="s1-2"
-export OPENSTACK_SSHKEY_NAME="my-ssh-key";
-export OPENSTACK_SSHKEY_PUB=$(cat ~/.ssh/id_rsa.pub)
-----
+NOTE: You can use the *paid* test to deploy a server, just comment the `after` method
 
 == Annexe
 
@@ -94,3 +79,46 @@ export OPENSTACK_SSHKEY_PUB=$(cat ~/.ssh/id_rsa.pub)
 
  * Documentation : https://developer.openstack.org/
  * OVH API endpoint : https://auth.cloud.ovh.net/v3/
+
+=== Providers
+
+==== OVH
+
+* It's a public cloud service, so every servers are available on internet.
+* We don't need to have a project
+
+**STATUS: [OK]**
+
+==== Vexxhost
+
+* Flavors doesn't include storage, we need to create one.
+* Need to change the rules on the security group to allow HTTP, HTTPS & SSH from anywhere
+
+**STATUS: [OK]**
+
+==== City Cloud
+
+All the network layout have to be done before to create a server.
+For example, per defaut a server has no network interface, except if a network is already present.
+
+So we need to :
+
+* Create a network in the interface (it create the subnet + router ...)
+* Create the server
+* Assign a floating IP address to server
+
+**STATUS: [OK] (but need some manual actions on the interface)**
+
+==== ElastX
+
+All the network layout have to be done when we create a server.
+
+So we need to :
+
+* Create a network
+* Create a subnet
+* Create a security group with rules
+* Create a router between the public network and the created one
+* Create and assign a floating IP address to server
+
+**STATUS: [KO]**

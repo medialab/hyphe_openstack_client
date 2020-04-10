@@ -26,9 +26,7 @@ export function jsonToQueryString(json) {
  * @returns {boolean}
  */
 export function isObject(item) {
-  return (
-    item && typeof item === "object" && !Array.isArray(item) && item !== null
-  );
+  return item && typeof item === "object" && !Array.isArray(item) && item !== null;
 }
 /**
  * Make a deep merge of the source object into the target one.

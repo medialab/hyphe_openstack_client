@@ -1,5 +1,6 @@
 "use strict";
 import axios from "axios";
+import { OpenStackError, ERROR_TYPES } from "./error";
 import { deepMerge, jsonToQueryString } from "./util";
 
 export class OpenStackClient {
@@ -17,13 +18,19 @@ export class OpenStackClient {
    *
    * @param {string} login Login of the openstack user
    * @param {string} password Password of the openstack user
-   * @param {string?} domain Domain of the openstack user. By default it's `Default`
+   * @param {string?} domain Domain of the openstack user. By default it's `Default`.
    * @param {string?} project Openstack project name
+   * @throws {OpenStackError}
    */
-  async authenticate(login, password, domain = "Default", project) {
+  async authenticate(login, password, domain = "Default", project = null) {
     // Init
     this.token = null;
     this.catalog = null;
+    this.project = null;
+
+    // check params
+    this._checkStringRequiredField("login", login);
+    this._checkStringRequiredField("password", login);
 
     // JSON body of the auth query
     const body = {
@@ -35,53 +42,56 @@ export class OpenStackClient {
               name: login,
               password: password,
               domain: {
-                name: domain
-              }
-            }
-          }
-        }
-      }
+                name: domain,
+              },
+            },
+          },
+        },
+      },
     };
     if (project) {
       body.auth.scope = {
         project: {
           name: project,
-          domain: { name: domain }
-        }
+          domain: { name: domain },
+        },
       };
     }
 
     try {
-      const response = await this._callApi(
-        `${this.url}/auth/tokens?nocatalog`,
-        "POST",
-        false,
-        body
-      );
+      // make the api call
+      const response = await this._callApi(`${this.url}/auth/tokens`, "POST", false, body);
+
+      // Save token
       this.token = {
         value: response.headers["x-subject-token"],
-        expired_at: Date.parse(response.data.token.expires_at)
+        expired_at: Date.parse(response.data.token.expires_at),
       };
-      await this.getCatalog();
+      this.project = response.data.token.project;
+
+      // register the catalog
+      if (response.data.token.catalog) {
+        this.catalog = response.data.token.catalog;
+      } else {
+        await this.getCatalog();
+      }
     } catch (e) {
-      throw new Error(`Fail to authenticate user ${login}: ${e.message}`);
+      throw new OpenStackError(`Fail to authenticate user ${login}`, e);
     }
   }
 
   /**
    * Retrieve the catalog of the OpenStack API and set it on the client.
    * This method is used in the auth process.
+   *
+   * @throws {OpenStackError}
    */
   async getCatalog() {
     try {
-      const response = await this._callApi(
-        `${this.url}/auth/catalog`,
-        "GET",
-        true
-      );
+      const response = await this._callApi(`${this.url}/auth/catalog`, "GET", true);
       this.catalog = response.data.catalog;
     } catch (e) {
-      throw new Error(`Fail to retrieve the catalog: ${e.message}`);
+      throw new OpenStackError(`Fail to retrieve the catalog`, e);
     }
   }
 
@@ -90,11 +100,15 @@ export class OpenStackClient {
    *
    * @param {string} serviceType Openstack service type (ie. `network`, `compute`, `identity`, `image`, ...)
    * @returns {Promise<Array<{region_id:string, region:string}>>}
+   * @throws {OpenStackError}
    */
   async getRegions(serviceType) {
+    // check params
+    this._checkStringRequiredField("serviceType", serviceType);
+
     // if the catalog property is missing, throw an error
     if (!this.catalog) {
-      throw new Error(`Catalog is missing or empty. Did you authenticate ?`);
+      throw new OpenStackError(`Catalog is missing or empty. Did you authenticate ?`);
     }
 
     // Compute the specified service
@@ -105,7 +119,7 @@ export class OpenStackClient {
       })
       .shift();
     if (!service) {
-      throw new Error(`The service '${serviceType}' doesn't exist`);
+      throw new OpenStackError(`The service '${serviceType}' doesn't exist`);
     }
 
     // construct an array of ID for the distinct part
@@ -127,7 +141,7 @@ export class OpenStackClient {
   }
 
   //
-  // ~~~ IMAGES ~~~
+  // ~~~ IMAGES - images ~~~
   //
 
   /**
@@ -136,23 +150,22 @@ export class OpenStackClient {
    * @param {string} regionId The id of openstack region
    * @param {object?} options See https://docs.openstack.org/api-ref/image/v2/index.html?expanded=list-images-detail#id7 for the list of available query string parameters
    * @returns {Promise<Array<Image>>}
+   * @throws {OpenStackError}
    */
   async getImages(regionId, options = {}) {
-    const url = this._findEndpoint("image", regionId, "public");
-    try {
-      const response = await this._callApi(
-        `${url}/v2/images${jsonToQueryString(options)}`,
-        "GET",
-        true
-      );
-      return response.data.images;
-    } catch (e) {
-      throw new Error(`Fail to retrieve the image list: ${e.message}`);
-    }
+    return await this._openstackCall(
+      regionId,
+      "image",
+      "GET",
+      `/v2/images${jsonToQueryString(options)}`,
+      true,
+      "images",
+    );
   }
 
   //
-  // ~~~ COMPUTE FLAVOR ~~~
+  // ~~~ COMPUTE - FLAVOR ~~~
+  // @see https://docs.openstack.org/api-ref/compute/#list-flavors
   //
 
   /**
@@ -161,23 +174,22 @@ export class OpenStackClient {
    * @param {string} regionId Openstack region id
    * @param {object?} options See https://docs.openstack.org/api-ref/compute/?expanded=create-server-detail,list-servers-detail,list-flavors-detail#id197 for the list of available query string parameters
    * @returns {Promise<Array<Flavor>>}
+   * @throws {OpenStackError}
    */
   async getComputeFlavors(regionId, options = {}) {
-    const url = this._findEndpoint("compute", regionId, "public");
-    try {
-      const response = await this._callApi(
-        `${url}/flavors${jsonToQueryString(options)}`,
-        "GET",
-        true
-      );
-      return await Promise.all(
-        response.data.flavors.map(flavor => {
-          return this.getComputeFlavor(regionId, flavor.id);
-        })
-      );
-    } catch (e) {
-      throw new Error(`Fail to retrieve the compute flavor list: ${e.message}`);
-    }
+    const flavors = await this._openstackCall(
+      regionId,
+      "compute",
+      "GET",
+      `/flavors${jsonToQueryString(options)}`,
+      true,
+      "flavors",
+    );
+    return await Promise.all(
+      flavors.map(flavor => {
+        return this.getComputeFlavor(regionId, flavor.id);
+      }),
+    );
   }
 
   /**
@@ -186,25 +198,15 @@ export class OpenStackClient {
    * @param {string} regionId Openstack region id
    * @param {string} flavorId Openstack flavor id
    * @returns {Promise<Flavor>}
+   * @throws {OpenStackError}
    */
   async getComputeFlavor(regionId, flavorId) {
-    const url = this._findEndpoint("compute", regionId, "public");
-    try {
-      const response = await this._callApi(
-        `${url}/flavors/${flavorId}`,
-        "GET",
-        true
-      );
-      return response.data.flavor;
-    } catch (e) {
-      throw new Error(
-        `Fail to retrieve detail for flavor ${flavorId}: ${e.message}`
-      );
-    }
+    return await this._openstackCall(regionId, "compute", "GET", `/flavors/${flavorId}`, true, "flavor");
   }
 
   //
-  // ~~~ COMPUTE KEYPAIRS ~~~
+  // ~~~ COMPUTE - Keypairs ~~~
+  // @see https://docs.openstack.org/api-ref/compute/#keypairs-keypairs
   //
 
   /**
@@ -213,21 +215,20 @@ export class OpenStackClient {
    * @param {string} regionId Openstack region id
    * @param {object?} options See https://docs.openstack.org/api-ref/compute/?expanded=create-server-detail,list-servers-detail,list-flavors-detail,list-keypairs-detail#id230 for the list of available query string parameters
    * @returns {Promise<Keypair>}
+   * @throws {OpenStackError}
    */
   async getComputeKeypairs(regionId, options = {}) {
-    const url = this._findEndpoint("compute", regionId, "public");
-    try {
-      const response = await this._callApi(
-        `${url}/os-keypairs${jsonToQueryString(options)}`,
-        "GET",
-        true
-      );
-      return response.data.keypairs.map(item => {
-        return item.keypair;
-      });
-    } catch (e) {
-      throw new Error(`Fail to retrieve compute keypair list: ${e.message}`);
-    }
+    const keypairs = await this._openstackCall(
+      regionId,
+      "compute",
+      "GET",
+      `/os-keypairs${jsonToQueryString(options)}`,
+      true,
+      "keypairs",
+    );
+    return keypairs.map(item => {
+      return item.keypair;
+    });
   }
 
   /**
@@ -237,28 +238,16 @@ export class OpenStackClient {
    * @param {string} name Name of the SSH key to create/save
    * @param {string?} publickey Public SSH key. If omitted, a new key will be created.
    * @returns {Promise<Keypair>}
+   * @throws {OpenStackError}
    */
   async setComputeKeypair(regionId, name, publicKey) {
-    // JSON body
-    const body = {
-      keypair: {
-        name: name,
-        public_key: publicKey
-      }
-    };
-
-    const url = this._findEndpoint("compute", regionId, "public");
-    try {
-      const response = await this._callApi(
-        `${url}/os-keypairs`,
-        "POST",
-        true,
-        body
-      );
-      return response.data.keypair;
-    } catch (e) {
-      throw new Error(`Fail to create/save ssh key ${name}: ${e.message}`);
-    }
+    // check params
+    this._checkStringRequiredField("name", name);
+    // make the api call
+    return await this._openstackCall(regionId, "compute", "POST", `/os-keypairs`, true, "keypair", {
+      name: name,
+      public_key: publicKey,
+    });
   }
 
   /**
@@ -267,22 +256,18 @@ export class OpenStackClient {
    *
    * @param {string} regionId Openstack region id
    * @param {string} name Name of the SSH key to delete
+   * @throws {OpenStackError}
    */
   async deleteComputeKeypair(regionId, name) {
-    const url = this._findEndpoint("compute", regionId, "public");
-    try {
-      const response = await this._callApi(
-        `${url}/os-keypairs/${name}`,
-        "DELETE",
-        true
-      );
-    } catch (e) {
-      throw new Error(`Fail to delete ssh key ${name}: ${e.message}`);
-    }
+    // check params
+    this._checkStringRequiredField("name", name);
+    // make the api call
+    await this._openstackCall(regionId, "compute", "DELETE", `/os-keypairs/${name}`, true);
   }
 
   //
-  // ~~~ COMPUTE SERVERS ~~~
+  // ~~~ COMPUTE - Servers ~~~
+  // @see https://docs.openstack.org/api-ref/compute/#servers-servers
   //
 
   /**
@@ -291,19 +276,17 @@ export class OpenStackClient {
    * @param {string} regionId Openstack region id
    * @param {object} options See https://docs.openstack.org/api-ref/compute/?expanded=list-servers-detail#list-servers-request for the list of available query string parameters
    * @returns {Promise<Array<Server>>} List of server ()
+   * @throws {OpenStackError}
    */
   async getComputeServers(regionId, options) {
-    try {
-      const url = this._findEndpoint("compute", regionId, "public");
-      const response = await this._callApi(
-        `${url}/servers/detail${jsonToQueryString(options)}`,
-        "GET",
-        true
-      );
-      return response.data.servers;
-    } catch (e) {
-      throw new Error(`Fail to retrieve the compute server list: ${e.message}`);
-    }
+    return await this._openstackCall(
+      regionId,
+      "compute",
+      "GET",
+      `/servers/detail${jsonToQueryString(options)}`,
+      true,
+      "servers",
+    );
   }
 
   /**
@@ -316,26 +299,29 @@ export class OpenStackClient {
    * @param {object} options Optionals parameters for the server creation (@see https://docs.openstack.org/api-ref/compute/?expanded=create-server-detail#id11)
    * @returns {Promise<Server>} Created server (@see https://docs.openstack.org/api-ref/compute/?expanded=create-server-detail,list-servers-detail,list-flavors-detail,list-keypairs-detail,add-associate-floating-ip-addfloatingip-action-deprecated-detail,pause-server-pause-action-detail,reboot-server-reboot-action-detail#id12 )
    */
-  async createComputeServer(regionId, name, imageId, flavorId, options = {}) {
-    const body = {
-      server: {
-        name: name,
-        imageRef: imageId,
-        flavorRef: flavorId
-      }
+  async createComputeServer(regionId, name, imageId, flavorId, server = {}) {
+    // check params
+    this._checkStringRequiredField("name", name);
+    this._checkStringRequiredField("imageId", imageId);
+    this._checkStringRequiredField("flavorId", flavorId);
+
+    // min server config
+    const serverMini = {
+      name: name,
+      imageRef: imageId,
+      flavorRef: flavorId,
     };
-    const url = this._findEndpoint("compute", regionId, "public");
-    try {
-      const response = await this._callApi(
-        `${url}/servers`,
-        "POST",
-        true,
-        deepMerge(body, { server: options })
-      );
-      return response.data.server;
-    } catch (e) {
-      throw new Error(`Fail to create compute server ${name}: ${e.message}`);
-    }
+
+    // make the api call
+    return await this._openstackCall(
+      regionId,
+      "compute",
+      "POST",
+      `/servers`,
+      true,
+      "server",
+      deepMerge(serverMini, server),
+    );
   }
 
   /**
@@ -345,21 +331,28 @@ export class OpenStackClient {
    * @param {string} regionId Openstack region id
    * @param {string} serverId Openstack server ID
    * @returns {Promise<Server>} Created server
+   * @throws {OpenStackError}
    */
   async getComputeServer(regionId, serverId) {
-    const url = this._findEndpoint("compute", regionId, "public");
-    try {
-      const response = await this._callApi(
-        `${url}/servers/${serverId}`,
-        "GET",
-        true
-      );
-      return response.data.server;
-    } catch (e) {
-      throw new Error(
-        `Fail to get detail of compute server ${serverId}: ${e.message}`
-      );
-    }
+    // check params
+    this._checkStringRequiredField("serverId", serverId);
+    // make the api call
+    return await this._openstackCall(regionId, "compute", "GET", `/servers/${serverId}`, true, "server");
+  }
+
+  /**
+   * Retrieve a compute server ip.
+   *
+   * @param {string} regionId Openstack region id
+   * @param {string} serverId Openstack server ID
+   * @returns {Promise<Array<Addresses>>} Lits of ip addresses
+   * @throws {OpenStackError}
+   */
+  async getComputeServerIp(regionId, serverId) {
+    // check params
+    this._checkStringRequiredField("serverId", serverId);
+    // make the api call
+    return await this._openstackCall(regionId, "compute", "GET", `/servers/${serverId}/ips`, true, "addresses");
   }
 
   /**
@@ -367,20 +360,13 @@ export class OpenStackClient {
    *
    * @param {string} regionId Openstack region id
    * @param {string} serverId Openstack server ID
+   * @throws {OpenStackError}
    */
   async deleteComputeServer(regionId, serverId) {
-    const url = this._findEndpoint("compute", regionId, "public");
-    try {
-      const response = await this._callApi(
-        `${url}/servers/${serverId}`,
-        "DELETE",
-        true
-      );
-    } catch (e) {
-      throw new Error(
-        `Fail to delete compute server ${serverId}: ${e.message}`
-      );
-    }
+    // check params
+    this._checkStringRequiredField("serverId", serverId);
+    // make the api call
+    await this._openstackCall(regionId, "compute", "DELETE", `/servers/${serverId}`, true);
   }
 
   /**
@@ -392,47 +378,349 @@ export class OpenStackClient {
    * @throws {Error} if the action is not performed
    */
   async actionComputeServer(regionId, serverId, actionBody) {
+    // check params
+    this._checkStringRequiredField("serverId", serverId);
+
+    // make the api call
     const url = this._findEndpoint("compute", regionId, "public");
     try {
-      const response = await this._callApi(
-        `${url}/servers/${serverId}/action`,
-        "POST",
-        true,
-        actionBody
-      );
+      const response = await this._callApi(`${url}/servers/${serverId}/action`, "POST", true, actionBody);
     } catch (e) {
-      throw new Error(
-        `Failed to exec action ${actionBody} on server ${serverid}`
-      );
+      throw new Error(`Failed to exec action ${actionBody} on server ${serverId}: ${e.message}`);
     }
   }
 
   async startComputeServer(regionId, serverId) {
-    actionComputeServer(regionId, serverId, { "os-stop": null });
+    await this.actionComputeServer(regionId, serverId, { "os-stop": null });
   }
 
   async stopComputeServer(regionId, serverId) {
-    actionComputeServer(regionId, serverId, { "os-stop": null });
+    await this.actionComputeServer(regionId, serverId, { "os-stop": null });
   }
 
   async rebootComputeServer(regionId, serverId, rebootType = "SOFT") {
-    actionComputeServer(regionId, serverId, { reboot: { type: rebootType } });
+    await this.actionComputeServer(regionId, serverId, {
+      reboot: { type: rebootType },
+    });
   }
 
   async suspendComputeServer(regionId, serverId) {
-    actionComputeServer(regionId, serverId, { suspend: null });
+    await this.actionComputeServer(regionId, serverId, { suspend: null });
   }
 
   async resumeComputeServer(regionId, serverId) {
-    actionComputeServer(regionId, serverId, { resume: null });
+    await this.actionComputeServer(regionId, serverId, { resume: null });
   }
 
   async pauseComputeServer(regionId, serverId) {
-    actionComputeServer(regionId, serverId, { pause: null });
+    await this.actionComputeServer(regionId, serverId, { pause: null });
   }
 
   async unpauseComputeServer(regionId, serverId) {
-    actionComputeServer(regionId, serverId, { unpause: null });
+    await this.actionComputeServer(regionId, serverId, { unpause: null });
+  }
+
+  //
+  // ~~~ NETWORK (neutron)- Networks (https://docs.openstack.org/api-ref/network/v2/index.html#networks) ~~~
+  //
+
+  /**
+   * Get all the networks.
+   *
+   * @param {string} regionId Openstack region id
+   * @param {object} options Options for querying networks.
+   * @returns {Promise<Array<Network>>}
+   * @throws {OpenStackError}
+   */
+  async getNetworkNetworks(regionId, options = {}) {
+    const networks = await this._openstackCall(
+      regionId,
+      "network",
+      "GET",
+      `/v2.0/networks${jsonToQueryString(options)}`,
+      true,
+      "networks",
+    );
+    return await Promise.all(
+      networks.map(network => {
+        return this.getNetworkNetwork(regionId, network.id);
+      }),
+    );
+  }
+
+  /**
+   * Get a network by its id.
+   *
+   * @param {string} regionId Openstack region id
+   * @param {string} networkId OpenStack network id
+   * @returns {Promise<Network>}
+   * @throws {OpenStackError}
+   */
+  async getNetworkNetwork(regionId, networkId) {
+    // check params
+    this._checkStringRequiredField("networkId", networkId);
+    // make api call
+    return await this._openstackCall(regionId, "network", "GET", `/v2.0/networks/${networkId}`, true, "network");
+  }
+
+  /**
+   * Create a network.
+   *
+   * @param {string} regionId Openstack region id
+   * @param {object} network OpenStack network object (@see https://docs.openstack.org/api-ref/network/v2/index.html?expanded=create-network-detail#id22)
+   * @returns {Promise<Network>}
+   * @throws {OpenStackError}
+   */
+  async createNetworkNetwork(regionId, network) {
+    return await this._openstackCall(regionId, "network", "POST", `/v2.0/networks`, true, "network", network);
+  }
+
+  /**
+   * Delete a network.
+   *
+   * @param {string} regionId Openstack region id
+   * @param {string} networkId OpenStack network id
+   * @throws {OpenStackError}
+   */
+  async deleteNetworkNetwork(regionId, networkId) {
+    await this._openstackCall(regionId, "network", "DELETE", `/v2.0/networks/${networkId}`, true);
+  }
+
+  //
+  // ~~~ NETWORK (neutron)- Subnets ~~~
+  // @see https://docs.openstack.org/api-ref/network/v2/index.html#subnets
+  //
+
+  /**
+   * Get all the subnets.
+   *
+   * @param {string} regionId Openstack region id
+   * @param {object} options Options for querying subnets.
+   * @returns {Promise<Array<Subnet>>}
+   * @throws {OpenStackError}
+   */
+  async getNetworkSubnets(regionId, options = {}) {
+    return await this._openstackCall(
+      regionId,
+      "network",
+      "GET",
+      `/v2.0/subnets${jsonToQueryString(options)}`,
+      true,
+      "subnets",
+    );
+  }
+
+  /**
+   * Get a subnet by its id.
+   *
+   * @param {string} regionId Openstack region id
+   * @param {string} subnetId OpenStack subnet id
+   * @returns {Promise<Subnet>}
+   * @throws {OpenStackError}
+   */
+  async getNetworkSubnet(regionId, subnetId) {
+    // check params
+    this._checkStringRequiredField("subnetId", subnetId);
+    // make api call
+    return await this._openstackCall(regionId, "network", "GET", `/v2.0/subnets/${subnetId}`, true, "subnet");
+  }
+
+  /**
+   * Create a subnet.
+   *
+   * @param {string} regionId Openstack region id
+   * @param {string} networkId Openstack networkId for the subnet
+   * @param {string} ipVersion Openstack ipVersion for the subnet
+   * @param {string} cidr Openstack cidr for the subnet
+   * @param {object} subnet OpenStack subnet object.
+   * @returns {Promise<Subnet>}
+   * @throws {OpenStackError}
+   */
+  async createNetworkSubnet(regionId, networkId, ipVersion, cidr, subnet) {
+    // check params
+    this._checkStringRequiredField("networkId", networkId);
+    // make api call
+    return await this._openstackCall(
+      regionId,
+      "network",
+      "POST",
+      `/v2.0/subnets`,
+      true,
+      "subnet",
+      deepMerge({ network_id: networkId, ip_version: ipVersion, cidr: cidr }, subnet),
+    );
+  }
+
+  /**
+   * Delete a subnet by its id.
+   *
+   * @param {string} regionId Openstack region id
+   * @param {string} subnetId OpenStack subnet id
+   * @throws {OpenStackError}
+   */
+  async deleteNetworkSubnet(regionId, subnetId) {
+    // check params
+    this._checkStringRequiredField("subnetId", subnetId);
+    // make api call
+    await this._openstackCall(regionId, "network", "DELETE", `/v2.0/subnets/${subnetId}`, true, "subnet");
+  }
+
+  //
+  // ~~~ NETWORK (neutron)- Security group  ~~~
+  // @see https://docs.openstack.org/api-ref/network/v2/index.html#security-groups-security-groups
+  //
+
+  /**
+   * Get all security groups
+   *
+   * @param {string} regionId Openstack region id
+   * @param {object} options Options for querying
+   * @returns {Promise<Array<SecurityGroup>>}
+   * @throws {OpenStackError}
+   */
+  async getNetworkSecurityGroups(regionId, options = {}) {
+    return await this._openstackCall(
+      regionId,
+      "network",
+      "GET",
+      `/v2.0/security-groups${jsonToQueryString(options)}`,
+      true,
+      "security_groups",
+    );
+  }
+
+  /**
+   * Get a security group by its id
+   *
+   * @param {string} regionId Openstack region id
+   * @param {string} securityGroupId Openstack security group id
+   * @returns {Promise<SecurityGroup>}
+   * @throws {OpenStackError}
+   */
+  async getNetworkSecurityGroup(regionId, securityGroupId) {
+    // check params
+    this._checkStringRequiredField("securityGroupId", securityGroupId);
+    // make api call
+    return await this._openstackCall(
+      regionId,
+      "network",
+      "GET",
+      `/v2.0/security-groups/${securityGroupId}`,
+      true,
+      "security_group",
+    );
+  }
+
+  /**
+   * Create a Security group.
+   *
+   * @param {string} regionId Openstack region id
+   * @param {string} name name of the security group
+   * @param {object} securityGroup OpenStack SecurityGroup object (@see https://docs.openstack.org/api-ref/network/v2/index.html?expanded=create-security-group-detail#id371)
+   * @returns {Promise<SecurityGroup>}
+   * @throws {OpenStackError}
+   */
+  async createNetworkSecurityGroup(regionId, name, securityGroup = {}) {
+    // check params
+    this._checkStringRequiredField("name", name);
+    // make api call
+    return await this._openstackCall(
+      regionId,
+      "network",
+      "POST",
+      `/v2.0/security-groups`,
+      true,
+      "security_group",
+      deepMerge({ name: name }, securityGroup),
+    );
+  }
+
+  /**
+   * Delete a Security group.
+   *
+   * @param {string} regionId Openstack region id
+   * @param {string} name name of the security group
+   * @param {string} securityGroupId Openstack security group id
+   * @throws {OpenStackError}
+   */
+  async deleteNetworkSecurityGroup(regionId, securityGroupId) {
+    // check params
+    this._checkStringRequiredField("securityGroupId", securityGroupId);
+    // make api call
+    await this._openstackCall(regionId, "network", "DELETE", `/v2.0/security-groups/${securityGroupId}`, true);
+  }
+
+  //
+  // ~~~ NETWORK (neutron)- Security group rules  ~~~
+  // @see https://docs.openstack.org/api-ref/network/v2/index.html?#security-group-rules-security-group-rules
+  //
+
+  /**
+   * Create a Security group rule.
+   *
+   * @param {string} regionId Openstack region id
+   * @param {string} securityGroupid OpenStack SecurityGroup id
+   * @param {object} rule OpenStack SecurityGroupRule object (@see https://docs.openstack.org/api-ref/network/v2/index.html?&expanded=create-security-group-rule-detail#id357)
+   * @returns {Promise<SecurityGroup>}
+   * @throws {OpenStackError}
+   */
+  async createNetworkSecurityGroupRule(regionId, securityGroupId, rule) {
+    // check params
+    this._checkStringRequiredField("securityGroupId", securityGroupId);
+    // make api call
+    return await this._openstackCall(
+      regionId,
+      "network",
+      "POST",
+      `/v2.0/security-group-rules`,
+      true,
+      "security_group_rule",
+      deepMerge({ security_group_id: securityGroupId }, rule),
+    );
+  }
+
+  //
+  // ~~~ 'PRIVATE' METHODS  ~~~
+  //
+
+  /**
+   * Generic method to exchange with the openstack API.
+   *
+   * @param {string} regionId Openstack region id
+   * @param {string} service Openstack service name (ie. compute, server, ...)
+   * @param {string} method The http method to perform
+   * @param {string} path OpenStack path to call for the service
+   * @param {boolean} auth Is endpoint requires auth ?
+   * @param {string} objectName Name of the object we send to the API (and the API respond)
+   * @param {string} object The object we send to the api
+   * @returns {Promise<object>} The response of the api (only what we need, so the objectName)
+   * @throws {OpenStackError}
+   */
+  async _openstackCall(regionId, service, method, path, auth = true, objectName, object) {
+    // check params
+    this._checkStringRequiredField("regionId", regionId);
+
+    // find the endpoint
+    const url = this._findEndpoint(service, regionId, "public");
+
+    // Construct the http body if needed
+    let data;
+    if (objectName && object != undefined) {
+      data = {};
+      data[objectName] = object;
+    }
+
+    // make the call and parse the response
+    try {
+      const response = await this._callApi(`${url}${path}`, method, auth, data);
+      if (response.data) {
+        return response.data[objectName];
+      } else {
+        return null;
+      }
+    } catch (e) {
+      throw new OpenStackError(`Failed to ${method} on ${path} for service ${service} `, e);
+    }
   }
 
   /**
@@ -443,12 +731,15 @@ export class OpenStackClient {
    * @param {boolean} auth Is endpoint requires auth ?
    * @param {string} body HTTP body of the call
    * @returns {Promise<AxiosResponse>} The axios response
-   * @throws {Error} If an error occured (ie. the code is not a 20X)
+   * @throws {AxiosError} If an error occured (ie. the code is not a 20X)
    */
   async _callApi(url, method, auth, body) {
+    // deafult header
     const headers = {
-      "Content-Type": "application/json"
+      "Content-Type": "application/json",
     };
+
+    // do we need authentification ?
     if (auth) {
       if (!this.token) {
         throw new Error("Not authenticated");
@@ -458,20 +749,16 @@ export class OpenStackClient {
       }
       headers["X-Auth-Token"] = this.token.value;
     }
-    try {
-      const response = await axios({
-        url: url,
-        method: method,
-        headers: headers,
-        responseType: "json",
-        data: body
-      });
-      return response;
-    } catch (e) {
-      throw new Error(
-        `API returns ${e.response.status} - ${JSON.stringify(e.response.data)}`
-      );
-    }
+
+    // make the http call
+    const response = await axios({
+      url: url,
+      method: method,
+      headers: headers,
+      responseType: "json",
+      data: body,
+    });
+    return response;
   }
 
   /**
@@ -481,21 +768,27 @@ export class OpenStackClient {
    * @param {string} regionId The id of the region
    * @param {string} type The interface of the endpoint (ie. `internal`, `admin` or `public`)
    * @returns {string} The endpoint url
+   * @throws {OpenStackError}
    */
   _findEndpoint(serviceType, regionId, type) {
+    // check params
+    this._checkStringRequiredField("serviceType", serviceType);
+    this._checkStringRequiredField("regionId", regionId);
+
     if (!this.catalog) {
-      throw new Error(`Catalog is missing or empty. Did you authenticate ?`);
+      throw new OpenStackError(`Catalog is missing or empty. Did you authenticate ?`);
     }
-    // Get the specified service
+
+    // Get the endpoint list for the specified service
     const service = this.catalog
-      // Get the endpoint list for the specified service
       .filter(service => {
         return service.type === serviceType;
       })
       .shift();
     if (!service) {
-      throw new Error(`The service '${serviceType}' doesn't exist`);
+      throw new OpenStackError(`The service '${serviceType}' doesn't exist`);
     }
+
     // Find the endpoint for type and regionId
     const endpoint = service.endpoints
       .filter(endpoint => {
@@ -504,11 +797,23 @@ export class OpenStackClient {
       .shift();
 
     if (!endpoint) {
-      throw new Error(
-        `There is no ${regionId} / ${type} endpoint for service ${serviceType}`
-      );
+      throw new OpenStackError(`There is no ${regionId} / ${type} endpoint for service ${serviceType}`);
     }
 
     return endpoint.url;
+  }
+
+  /**
+   * Check if the named field  is null or empty.
+   * If so, an error is thrown.
+   *
+   * @param {string} name  Name of the field (use in the error)
+   * @param {string} vale Value of the field.
+   * @throws {OpenStackError}
+   */
+  _checkStringRequiredField(name, value) {
+    if (value === undefined || value.trim() === "") {
+      throw new OpenStackError(`Field ${name} is required`);
+    }
   }
 }
