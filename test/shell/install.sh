@@ -88,6 +88,9 @@ echo " - Clone git repository"
 sudo git clone https://github.com/medialab/hyphe.git /opt/hyphe
 check $?
 cd /opt/hyphe
+echo "  - Loading hyphe env"
+source ./hyphe.env
+check $?
 echo " - Configure"
 sudo cp .env.example .env
 sudo sed -i 's/RESTART_POLICY=no/RESTART_POLICY=unless-stopped/g' .env

@@ -9,7 +9,8 @@ IFS=$'\n\t'
 ###############################################################################
 # CONSTANTS & UTILS
 ###############################################################################
-LOG_FILE="/var/www/install.log"
+mkdir -p /var/www/html
+LOG_FILE="/var/www/html/install.log"
 
 echo "Starting script at $(date)" > $LOG_FILE
 
@@ -23,10 +24,9 @@ echo "Download install script" >> $LOG_FILE
 curl https://raw.githubusercontent.com/medialab/hyphe_openstack_client/master/test/shell/install.sh > install.sh
 chmod +x install.sh
 
-# TODO
 # SETTING HERE THE ENV VARIABLES FOR HYPHE
 # Example :
-# export HYPHE_BROWSER_URL=https://github.com/medialab/hyphe-browser/releases
+echo "PUBLIC_PORT=81" > hyphe.env
 
 echo
 echo "Executing install script" >> $LOG_FILE
