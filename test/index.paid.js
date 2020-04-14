@@ -157,7 +157,7 @@ describe("Client - Paid - Server", () => {
       // Step 6 : Convert shell script to base64
       // ~~~~~~~~~~~~~~~~~~~~~~~~
       // TODO: make a call to the github repo to retrieve the script
-      const content = await read("./test/post-install.sh");
+      const content = await read("./test/shell/script.sh");
       console.log("Encoding script");
       const content64 = Buffer.from(content).toString("base64");
       console.log("Encoding script is", content64);
