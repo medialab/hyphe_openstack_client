@@ -28,7 +28,19 @@ echo " - Install"
 sudo apt-get install -y nginx
 check $?
 echo " - Configuration"
-sudo sed -i 's/80/81/g' /etc/nginx/sites-available/default
+cat > /etc/nginx/sites-available/default << EOF
+server {
+  listen 80;
+  root /var/www/html;
+  server_name  _;
+  location /install.log {
+      try_files \$uri \$uri/ /index.html;
+  }
+  location / {
+    proxy_pass http://localhost:81;
+  }
+}
+EOF
 check $?
 echo " - Start"
 sudo systemctl restart nginx
