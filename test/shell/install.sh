@@ -2,7 +2,7 @@
 ###############################################################################
 # Strict mode
 ###############################################################################
-set -uo pipefail
+set -euo pipefail
 IFS=$'\n\t'
 
 ###############################################################################
@@ -22,6 +22,10 @@ function check() {
 ###############################################################################
 # MAIN
 ###############################################################################
+echo
+echo "Loading env"
+source /hyphe.env
+
 echo
 echo "Nginx"
 echo " - Install"
@@ -88,8 +92,6 @@ echo " - Clone git repository"
 sudo git clone https://github.com/medialab/hyphe.git /opt/hyphe
 check $?
 cd /opt/hyphe
-echo "  - Loading hyphe env"
-source ./hyphe.env
 check $?
 echo " - Configure"
 sudo cp .env.example .env

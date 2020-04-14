@@ -26,7 +26,7 @@ chmod +x install.sh
 
 # SETTING HERE THE ENV VARIABLES FOR HYPHE
 # Example :
-echo "PUBLIC_PORT=81" > hyphe.env
+echo "export PUBLIC_PORT=81" > hyphe.env
 
 echo
 echo "Executing install script" >> $LOG_FILE
