@@ -102,7 +102,7 @@ describe("Client - Paid - Server", () => {
           direction: "ingress",
           port_range_min: "80",
           ethertype: "IPv4",
-          port_range_max: "80",
+          port_range_max: "81",
           protocol: "tcp",
           description: "http",
         });
