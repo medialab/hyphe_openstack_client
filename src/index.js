@@ -1,6 +1,6 @@
 "use strict";
 import axios from "axios";
-import { OpenStackError, ERROR_TYPES } from "./error";
+import { OpenStackError } from "./error";
 import { deepMerge, jsonToQueryString } from "./util";
 
 export class OpenStackClient {
