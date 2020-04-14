@@ -25,6 +25,7 @@ function check() {
 echo
 echo "Loading env"
 source /hyphe.env
+check $?
 
 echo
 echo "Nginx"
@@ -106,5 +107,5 @@ echo " - Docker compose pull"
 sudo /usr/local/bin/docker-compose pull
 check $?
 echo " - Docker compose up"
-sudo /usr/local/bin/docker-compose up -d
+sudo --preserve-env /usr/local/bin/docker-compose up -d
 check $?
