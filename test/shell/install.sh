@@ -42,7 +42,7 @@ server {
       try_files \$uri \$uri/ /index.html;
   }
   location / {
-    proxy_pass http://localhost:81;
+    proxy_pass http://localhost:81/;
   }
 }
 EOF
