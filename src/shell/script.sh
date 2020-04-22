@@ -21,7 +21,7 @@ sudo apt-get install -y curl
 
 echo
 echo "Download install script" >> $LOG_FILE
-curl -s https://raw.githubusercontent.com/medialab/hyphe_openstack_client/master/test/shell/install.sh > install.sh
+curl -s https://raw.githubusercontent.com/medialab/hyphe_openstack_client/master/src/shell/install.sh > install.sh
 chmod +x install.sh
 
 # SETTING HERE THE ENV VARIABLES FOR HYPHE
