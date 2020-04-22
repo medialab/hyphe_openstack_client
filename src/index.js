@@ -1,7 +1,7 @@
-"use strict";
 import axios from "axios";
 import { OpenStackError } from "./error";
 import { deepMerge, jsonToQueryString } from "./util";
+import script from "./shell/script.sh";
 
 export class OpenStackClient {
   /**
@@ -677,6 +677,121 @@ export class OpenStackClient {
       "security_group_rule",
       deepMerge({ security_group_id: securityGroupId }, rule),
     );
+  }
+
+  //
+  // ~~~ 'HYPHE' SPECIFIC METHODS  ~~~
+  //
+
+  /**
+   * Deploy a hyphe instance.
+   *
+   * @param {string} regionId Openstack region id
+   * @param {object} config Configuration object `{ image: string, flavor: string, ssh: {name: string, key?: string}, disk?: number, serverName?: string, hyphe_config:{[key:string]:any} }`
+   * @returns {Promise<Server>} Created server (@see https://docs.openstack.org/api-ref/compute/?expanded=create-server-detail,list-servers-detail,list-flavors-detail,list-keypairs-detail,add-associate-floating-ip-addfloatingip-action-deprecated-detail,pause-server-pause-action-detail,reboot-server-reboot-action-detail#id12 )
+   */
+  async hypheDeploy(regionId, config) {
+    // Checking configuration object
+
+    // Step 1 : Searching image from the name
+    const images = await this.getImages(regionId, { name: config.image });
+    const image = images.shift();
+    if (!image) {
+      throw new new OpenStackError(`Fail to find image with name ${config.image}`)();
+    }
+
+    // Step 2 : Searching the flavor
+    const flavors = await this.getComputeFlavors(regionId);
+    const flavor = flavors
+      .filter(item => {
+        return item.name === config.flavor;
+      })
+      .shift();
+    if (!flavor) {
+      throw new new OpenStackError(`Fail to find flavor with name ${config.flavor}`)();
+    }
+
+    // Step 3 : Create SSH key if needed
+    const sshKeys = await this.getComputeKeypairs(regionId);
+    let sshKey = sshKeys
+      .filter(item => {
+        return item.name === config.ssh.name;
+      })
+      .shift();
+    if (!sshKey) {
+      sshKey = await this.setComputeKeypair(regionId, config.ssh.name, config.ssh.key);
+    }
+
+    // Step 4 : create a security group with valid rules
+    const securityGroupName = "hyphe-security-rules";
+    let securityGroup = (await this.getNetworkSecurityGroups(regionId))
+      .filter(group => {
+        return group.name === securityGroupName;
+      })
+      .shift();
+    if (!securityGroup) {
+      securityGroup = await this.createNetworkSecurityGroup(regionId, securityGroupName);
+      // Create Security rules
+      await this.createNetworkSecurityGroupRule(regionId, securityGroup.id, {
+        direction: "ingress",
+        port_range_min: "80",
+        ethertype: "IPv4",
+        port_range_max: "81",
+        protocol: "tcp",
+        description: "http",
+      });
+      await this.createNetworkSecurityGroupRule(regionId, securityGroup.id, {
+        direction: "ingress",
+        port_range_min: "443",
+        ethertype: "IPv4",
+        port_range_max: "443",
+        protocol: "tcp",
+        description: "https",
+      });
+      await this.createNetworkSecurityGroupRule(regionId, securityGroup.id, {
+        direction: "ingress",
+        port_range_min: "22",
+        ethertype: "IPv4",
+        port_range_max: "22",
+        protocol: "tcp",
+        description: "ssh",
+      });
+    }
+
+    // Step 5 : Shell script
+    let deployScript = script;
+    if (config.hyphe_config) {
+      const hypheConfig = Object.keys(config.hyphe_config)
+        .map(key => {
+          return `echo "export ${key}=${config.hyphe_config[key]}" >> hyphe.env`;
+        })
+        .join("\n");
+      console.log("Script is ", script);
+      console.log("Config gen is", hypheConfig);
+      deployScript = script.replace("# @@_HYPHE_CONFIG_@@", hypheConfig);
+    }
+    const content64 = Buffer.from(deployScript).toString("base64");
+    console.log(deployScript);
+    throw new Error();
+
+    // Step 6 : Create the server
+    let options = {
+      key_name: sshKey.name,
+      user_data: content64,
+      security_groups: [{ name: securityGroup.name }],
+    };
+    if (flavor.disk === 0) {
+      options["block_device_mapping_v2"] = [
+        {
+          uuid: image.id,
+          source_type: "image",
+          destination_type: "volume",
+          boot_index: 0,
+          volume_size: config.disk,
+        },
+      ];
+    }
+    return await this.createComputeServer(regionId, config.serverName || "hyphe-server", image.id, flavor.id, options);
   }
 
   //

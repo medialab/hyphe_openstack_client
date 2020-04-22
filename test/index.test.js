@@ -1,5 +1,5 @@
 import chai from "chai";
-import { OpenStackClient } from "../src/index";
+import OpenStackClient from "../lib/node-openstack-client";
 
 chai.expect();
 const assert = chai.assert;

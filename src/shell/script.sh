@@ -3,7 +3,7 @@
 ###############################################################################
 # Strict mode
 ###############################################################################
-set -uo pipefail
+set -euo pipefail
 IFS=$'\n\t'
 
 ###############################################################################
@@ -21,12 +21,12 @@ sudo apt-get install -y curl
 
 echo
 echo "Download install script" >> $LOG_FILE
-curl https://raw.githubusercontent.com/medialab/hyphe_openstack_client/master/test/shell/install.sh > install.sh
+curl -s https://raw.githubusercontent.com/medialab/hyphe_openstack_client/master/test/shell/install.sh > install.sh
 chmod +x install.sh
 
 # SETTING HERE THE ENV VARIABLES FOR HYPHE
-# Example :
 echo "export PUBLIC_PORT=81" > hyphe.env
+# @@_HYPHE_CONFIG_@@
 
 echo
 echo "Executing install script" >> $LOG_FILE
