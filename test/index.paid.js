@@ -18,8 +18,6 @@ const OPENSTACK_SSHKEY_PUB = process.env.OPENSTACK_SSHKEY_PUB;
 
 const client = new OpenStackClient(OPENSTACK_URL);
 
-const minOvhFlavor = "s1-2";
-const serverImage = "Debian 10";
 const serverName = "hyphe-openstack-client-test";
 
 let server = null;
@@ -126,9 +124,11 @@ describe("Client - Paid - Server", () => {
 
       // Step 4 : Search the image
       // ~~~~~~~~~~~~~~~~~~~~~~~~
-      const image = (await client.getImages(OPENSTACK_REGION, {
-        name: OPENSTACK_IMAGE,
-      })).shift();
+      const image = (
+        await client.getImages(OPENSTACK_REGION, {
+          name: OPENSTACK_IMAGE,
+        })
+      ).shift();
       console.log("Image found", image);
 
       // Step 5 :Search the  flavor
