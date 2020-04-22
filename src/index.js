@@ -391,7 +391,7 @@ export class OpenStackClient {
   }
 
   async startComputeServer(regionId, serverId) {
-    await this.actionComputeServer(regionId, serverId, { "os-stop": null });
+    await this.actionComputeServer(regionId, serverId, { "os-start": null });
   }
 
   async stopComputeServer(regionId, serverId) {
