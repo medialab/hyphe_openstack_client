@@ -766,13 +766,9 @@ export class OpenStackClient {
           return `echo "export ${key}=${config.hyphe_config[key]}" >> hyphe.env`;
         })
         .join("\n");
-      console.log("Script is ", script);
-      console.log("Config gen is", hypheConfig);
       deployScript = script.replace("# @@_HYPHE_CONFIG_@@", hypheConfig);
     }
     const content64 = Buffer.from(deployScript).toString("base64");
-    console.log(deployScript);
-    throw new Error();
 
     // Step 6 : Create the server
     let options = {
