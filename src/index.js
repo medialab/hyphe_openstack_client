@@ -700,7 +700,7 @@ export class OpenStackClient {
     const images = await this.getImages(regionId, { name: config.image });
     const image = images.shift();
     if (!image) {
-      throw new new OpenStackError(`Fail to find image with name ${config.image}`)();
+      throw new OpenStackError(`Fail to find image with name ${config.image}`)();
     }
 
     // Step 2 : Searching the flavor
@@ -711,7 +711,7 @@ export class OpenStackClient {
       })
       .shift();
     if (!flavor) {
-      throw new new OpenStackError(`Fail to find flavor with name ${config.flavor}`)();
+      throw new OpenStackError(`Fail to find flavor with name ${config.flavor}`)();
     }
     if (flavor.disk === 0 && !config.disk) {
       throw new OpenStackError(`Field disk in config is required when a flavor has no disk`);
