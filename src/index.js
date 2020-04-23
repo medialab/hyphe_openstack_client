@@ -692,6 +692,9 @@ export class OpenStackClient {
    */
   async hypheDeploy(regionId, config) {
     // Checking configuration object
+    this._checkStringRequiredField("image in config", config.image);
+    this._checkStringRequiredField("flavor in config", config.flavor);
+    this._checkStringRequiredField("ssh name in config", config.ssh.name);
 
     // Step 1 : Searching image from the name
     const images = await this.getImages(regionId, { name: config.image });
@@ -709,6 +712,9 @@ export class OpenStackClient {
       .shift();
     if (!flavor) {
       throw new new OpenStackError(`Fail to find flavor with name ${config.flavor}`)();
+    }
+    if (flavor.disk === 0 && !config.disk) {
+      throw new OpenStackError(`Field disk in config is required when a flavor has no disk`);
     }
 
     // Step 3 : Create SSH key if needed
