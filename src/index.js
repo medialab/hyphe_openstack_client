@@ -384,7 +384,7 @@ export class OpenStackClient {
     // make the api call
     const url = this._findEndpoint("compute", regionId, "public");
     try {
-      const response = await this._callApi(`${url}/servers/${serverId}/action`, "POST", true, actionBody);
+      await this._callApi(`${url}/servers/${serverId}/action`, "POST", true, actionBody);
     } catch (e) {
       throw new Error(`Failed to exec action ${actionBody} on server ${serverId}: ${e.message}`);
     }

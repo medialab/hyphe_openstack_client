@@ -1,8 +1,6 @@
 {
   "env": {
-    "browser": true,
-    "es6": true,
-    "node": false
+    "es6": true
   },
   "globals": {
     "document": false,
@@ -14,8 +12,9 @@
     "before": true,
     "it": true,
     "expect": true,
-    "sinon": true
+    "sinon": true,
+    "Buffer": true
   },
-  "parser": "babel-eslint",
-  "plugins": []
+  "extends": "eslint:recommended",
+  "parser": "babel-eslint"
 }

@@ -5,7 +5,8 @@
   "main": "./lib/openstack-client.min.js",
   "scripts": {
     "clean": "rimraf lib",
-    "build": "npm run clean && webpack --env build",
+    "build": "npm run lint && npm run clean && webpack --env build",
+    "lint": "eslint --ext .js src/",
     "test:unit": "npm run build && mocha './test/{,/**}/*.test.js' --timeout 20000 --require @babel/polyfill --require @babel/register --full-trace",
     "test:paid": "npm run build && mocha './test/{,/**}/*.paid.js' --timeout 3600000 --require @babel/polyfill --require @babel/register --full-trace",
     "test": "npm run build && npm run test:unit && npm run test:paid"
