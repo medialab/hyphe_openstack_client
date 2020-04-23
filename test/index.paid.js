@@ -38,13 +38,15 @@ describe("Client - Paid - Server", () => {
       console.log("Server is deleted");
       const serverDetail = await client.getComputeServer(OPENSTACK_REGION, server.id);
       console.log("Server found", serverDetail);
-    } catch (e) {}
+    } catch (e) {
+      console.log(e);
+    }
   });
   it("Create a hyphe server should work", async () => {
     try {
       await client.authenticate(OPENSTACK_USER, OPENSTACK_PASSWORD, OPENSTACK_DOMAIN, OPENSTACK_PROJECT);
 
-      const server = await client.hypheDeploy(OPENSTACK_REGION, {
+      server = await client.hypheDeploy(OPENSTACK_REGION, {
         image: OPENSTACK_IMAGE,
         flavor: OPENSTACK_FLAVOR,
         ssh: { name: OPENSTACK_SSHKEY_NAME, key: OPENSTACK_SSHKEY_PUB },
