@@ -685,6 +685,9 @@ export class OpenStackClient {
 
   /**
    * Deploy a hyphe instance.
+   * In the config object :
+   *  - image is the name of the image
+   *  - flavor is the ID of the flavor
    *
    * @param {string} regionId Openstack region id
    * @param {object} config Configuration object `{ image: string, flavor: string, ssh: {name: string, key?: string}, disk?: number, serverName?: string, hyphe_config:{[key:string]:any} }`
@@ -704,12 +707,7 @@ export class OpenStackClient {
     }
 
     // Step 2 : Searching the flavor
-    const flavors = await this.getComputeFlavors(regionId);
-    const flavor = flavors
-      .filter(item => {
-        return item.name === config.flavor;
-      })
-      .shift();
+    const flavor = await this.getComputeFlavor(regionId, config.flavor);
     if (!flavor) {
       throw new OpenStackError(`Fail to find flavor with name ${config.flavor}`)();
     }

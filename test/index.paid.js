@@ -46,9 +46,16 @@ describe("Client - Paid - Server", () => {
     try {
       await client.authenticate(OPENSTACK_USER, OPENSTACK_PASSWORD, OPENSTACK_DOMAIN, OPENSTACK_PROJECT);
 
+      const flavors = await client.getComputeFlavors(OPENSTACK_REGION);
+      const flavor = flavors
+        .filter(item => {
+          return item.name === OPENSTACK_FLAVOR;
+        })
+        .shift();
+
       server = await client.hypheDeploy(OPENSTACK_REGION, {
         image: OPENSTACK_IMAGE,
-        flavor: OPENSTACK_FLAVOR,
+        flavor: flavor.id,
         ssh: { name: OPENSTACK_SSHKEY_NAME, key: OPENSTACK_SSHKEY_PUB },
         disk: 10,
         servername: serverName,
