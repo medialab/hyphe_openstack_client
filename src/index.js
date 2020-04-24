@@ -692,6 +692,7 @@ export class OpenStackClient {
    * @param {string} regionId Openstack region id
    * @param {object} config Configuration object `{ image: string, flavor: string, ssh: {name: string, key?: string}, disk?: number, serverName?: string, hyphe_config:{[key:string]:any} }`
    * @returns {Promise<Server>} Created server (@see https://docs.openstack.org/api-ref/compute/?expanded=create-server-detail,list-servers-detail,list-flavors-detail,list-keypairs-detail,add-associate-floating-ip-addfloatingip-action-deprecated-detail,pause-server-pause-action-detail,reboot-server-reboot-action-detail#id12 )
+   * @throws {OpenStackError}
    */
   async hypheDeploy(regionId, config) {
     // Checking configuration object
@@ -788,10 +789,26 @@ export class OpenStackClient {
           destination_type: "volume",
           boot_index: 0,
           volume_size: config.disk,
+          delete_on_termination: true,
         },
       ];
     }
     return await this.createComputeServer(regionId, config.serverName || "hyphe-server", image.id, flavor.id, options);
+  }
+
+  /**
+   * Delete a hyphe server.
+   *
+   * @param {string} regionId Openstack region id
+   * @param {string} serverId The openstack id of the server
+   * @throws {OpenStackError}
+   */
+  async hypheDeleteServer(regionId, serverId) {
+    const server = await this.getComputeServer(regionId, serverId);
+    if (!server) {
+      throw new OpenStackError(`Fail to find server with id ${serverId}`);
+    }
+    await this.deleteComputeServer(regionId, serverId);
   }
 
   //
@@ -824,7 +841,6 @@ export class OpenStackClient {
       data = {};
       data[objectName] = object;
     }
-
     // make the call and parse the response
     try {
       const response = await this._callApi(`${url}${path}`, method, auth, data);

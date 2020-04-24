@@ -34,7 +34,7 @@ async function read(filepath) {
 describe("Client - Paid - Server", () => {
   after(async () => {
     try {
-      await client.deleteComputeServer(OPENSTACK_REGION, server.id);
+      await client.hypheDeleteServer(OPENSTACK_REGION, server.id);
       console.log("Server is deleted");
       const serverDetail = await client.getComputeServer(OPENSTACK_REGION, server.id);
       console.log("Server found", serverDetail);
