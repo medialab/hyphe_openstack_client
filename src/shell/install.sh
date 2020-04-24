@@ -26,6 +26,9 @@ echo
 echo "Loading env"
 source /hyphe.env
 check $?
+cp /hyphe.env /etc/profile.d/hyphe.sh
+chmod +x /etc/profile.d/hyphe.sh
+check $?
 
 echo
 echo "Nginx"
