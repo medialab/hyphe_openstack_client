@@ -23,14 +23,6 @@ function check() {
 # MAIN
 ###############################################################################
 echo
-echo "Loading env"
-source /hyphe.env
-check $?
-cp /hyphe.env /etc/profile.d/hyphe.sh
-chmod +x /etc/profile.d/hyphe.sh
-check $?
-
-echo
 echo "Nginx"
 echo " - Install"
 sudo apt-get install -y nginx
@@ -95,14 +87,20 @@ echo "Hyphe"
 echo " - Clone git repository"
 sudo git clone https://github.com/medialab/hyphe.git /opt/hyphe
 check $?
+echo " - Go in `/opt/hyphe` directory"
 cd /opt/hyphe
 check $?
-echo " - Configure"
+echo " - Global Configuration"
 sudo cp .env.example .env
 sudo sed -i 's/RESTART_POLICY=no/RESTART_POLICY=unless-stopped/g' .env
 check $?
-sudo cp config-backend.env.example config-backend.env
-sudo cp config-frontend.env.example config-frontend.env
+echo " - Backend Configuration"
+sudo cp /hyphe.env config-backend.env
+check $?
+echo " - Backend Configuration"
+sudo cp /hyphe.env config-frontend.env
+check $?
+rm /hyphe.env
 echo " - File system permissions"
 sudo chown -R debian:debian /opt/hyphe
 check $?
