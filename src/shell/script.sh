@@ -25,7 +25,7 @@ curl -s https://raw.githubusercontent.com/medialab/hyphe_openstack_client/master
 chmod +x install.sh
 
 # SETTING HERE THE ENV VARIABLES FOR HYPHE
-touch hyphe.env
+touch /hyphe.env
 # @@_HYPHE_CONFIG_@@
 
 echo
