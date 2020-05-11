@@ -769,7 +769,7 @@ export class OpenStackClient {
       const hypheConfig = Object.keys(config.hyphe_config)
         .map(key => {
           // prettier-ignore
-          return `echo "export ${key}=${config.hyphe_config[key].replace('"', '\"')}" >> hyphe.env`; /* eslint-disable-line */
+          return `echo "export ${key}=${JSON.stringify(config.hyphe_config[key]).replace(/"/g, '\\\"')}" >> hyphe.env`; /* eslint-disable-line */
         })
         .join("\n");
       deployScript = script.replace("# @@_HYPHE_CONFIG_@@", hypheConfig);
