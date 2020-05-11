@@ -60,8 +60,17 @@ describe("Client - Paid - Server", () => {
         disk: 10,
         servername: serverName,
         hyphe_config: {
-          bli: "bla",
-          foo: "bar",
+          HYPHE_MAXDEPTH: 4,
+          HYPHE_DOWNLOAD_DELAY: 1.1,
+          HYPHE_MAX_SIM_REQ: 13,
+          HYPHE_HOST_MAX_SIM_REQ: 2,
+          HYPHE_PROXY_PORT: 0,
+          HYPHE_STORE_CRAWLED_HTML: true,
+          HYPHE_TRAPH_KEEPALIVE: 1801,
+          HYPHE_TRAPH_MAX_SIM_PAGES: 251,
+          HYPHE_OPEN_CORS_API: true,
+          HYPHE_DEFAULT_STARTPAGES_MODE: ["homepage", "pages-6"],
+          HYPHE_CREATION_RULES: { "twitter.com": "path-1" },
         },
       });
 
