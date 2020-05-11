@@ -30,7 +30,7 @@ touch /hyphe.env
 
 echo
 echo "Executing install script" >> $LOG_FILE
-./install.sh >> $LOG_FILE
+./install.sh >> $LOG_FILE 2>&1
 if [ $? -eq 0 ]; then
   echo "Installation completed at $(date)" >> $LOG_FILE
 else
