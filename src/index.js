@@ -769,11 +769,12 @@ export class OpenStackClient {
       const hypheConfig = Object.keys(config.hyphe_config)
         .map(key => {
           // prettier-ignore
-          return `echo "${key}=${JSON.stringify(config.hyphe_config[key]).replace(/"/g, '\\\"')}" >> hyphe.env`; /* eslint-disable-line */
+          return `echo "${key}=${config.hyphe_config[key].replace(/"/g, '\\\"')}" >> hyphe.env`; /* eslint-disable-line */
         })
         .join("\n");
       deployScript = script.replace("# @@_HYPHE_CONFIG_@@", hypheConfig);
     }
+
     const content64 = Buffer.from(deployScript).toString("base64");
 
     // Step 6 : Create the server
