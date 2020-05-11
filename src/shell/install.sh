@@ -24,7 +24,7 @@ function config_files_fusion() {
   while IFS='=' read -r key value
   do
     if grep -q "^$key" $1; then
-      sudo sed -i "s/$key.*/$key=$value/g" $1
+      sudo sed -i "s/$key.*/${key//\//\\/}=${value//\//\\/}/g" $1
     else
       echo "$key=$value" >> $1
     fi
@@ -98,9 +98,9 @@ echo "Hyphe"
 echo " - Clone git repository"
 sudo git clone https://github.com/medialab/hyphe.git /opt/hyphe
 check $?
-echo " - Go in `/opt/hyphe` directory"
+
 cd /opt/hyphe
-check $?
+
 echo " - Global Configuration : restart policy"
 sudo cp .env.example .env
 sudo sed -i 's/RESTART_POLICY=no/RESTART_POLICY=unless-stopped/g' .env
