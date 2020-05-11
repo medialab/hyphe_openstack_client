@@ -18,7 +18,18 @@ function check() {
   echo
 }
 
-
+# Merge the $2 into $1
+# If a key is already present in $1, it will be replaced by the value in $2
+function config_files_fusion() {
+  while IFS='=' read -r key value
+  do
+    if grep -q "^$key" $1; then
+      sudo sed -i "s/$key.*/$key=$value/g" $1
+    else
+      echo "$key=$value" >> $1
+    fi
+  done < $2
+}
 ###############################################################################
 # MAIN
 ###############################################################################
@@ -90,15 +101,21 @@ check $?
 echo " - Go in `/opt/hyphe` directory"
 cd /opt/hyphe
 check $?
-echo " - Global Configuration"
+echo " - Global Configuration : restart policy"
 sudo cp .env.example .env
 sudo sed -i 's/RESTART_POLICY=no/RESTART_POLICY=unless-stopped/g' .env
 check $?
-echo " - Backend Configuration"
-sudo cp /hyphe.env config-backend.env
+echo " - Global Configuration : http port"
+sudo sed -i 's/PUBLIC_PORT/81/g' .env
 check $?
+
 echo " - Backend Configuration"
-sudo cp /hyphe.env config-frontend.env
+sudo cp config-backend.env.example config-backend.env
+config_files_fusion config-backend.env /hyphe.env
+check $?
+echo " - Frontend Configuration"
+sudo cp config-frontend.env.example config-frontend.env
+config_files_fusion config-frontend.env /hyphe.env
 check $?
 rm /hyphe.env
 echo " - File system permissions"
@@ -108,5 +125,5 @@ echo " - Docker compose pull"
 sudo /usr/local/bin/docker-compose pull
 check $?
 echo " - Docker compose up"
-sudo --preserve-env /usr/local/bin/docker-compose up -d
+sudo  /usr/local/bin/docker-compose up -d
 check $?

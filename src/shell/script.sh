@@ -25,7 +25,7 @@ curl -s https://raw.githubusercontent.com/medialab/hyphe_openstack_client/master
 chmod +x install.sh
 
 # SETTING HERE THE ENV VARIABLES FOR HYPHE
-echo "export PUBLIC_PORT=81" > hyphe.env
+echo "" > hyphe.env
 # @@_HYPHE_CONFIG_@@
 
 echo
