@@ -106,16 +106,16 @@ sudo cp .env.example .env
 sudo sed -i 's/RESTART_POLICY=no/RESTART_POLICY=unless-stopped/g' .env
 check $?
 echo " - Global Configuration : http port"
-sudo sed -i 's/PUBLIC_PORT/81/g' .env
+sudo sed -i 's/PUBLIC_PORT=80/PUBLIC_PORT=81/g' .env
 check $?
 
 echo " - Backend Configuration"
 sudo cp config-backend.env.example config-backend.env
-config_files_fusion config-backend.env /hyphe.env
+config_files_fusion ./config-backend.env /hyphe.env
 check $?
 echo " - Frontend Configuration"
 sudo cp config-frontend.env.example config-frontend.env
-config_files_fusion config-frontend.env /hyphe.env
+config_files_fusion ./config-frontend.env /hyphe.env
 check $?
 rm /hyphe.env
 echo " - File system permissions"
