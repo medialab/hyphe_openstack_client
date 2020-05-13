@@ -77,6 +77,42 @@ IMPORTANT: Unit test fails on network for OVH
 
 == Annexe
 
+=== Hyphe configuration
+
+==== Description
+
+Hyphe configuration is a parameter of the method `hypheDeploy`.
+The configuration must be a map of strings.
+Exemple  :
+
+[source,json]
+----
+{
+  "HYPHE_MAXDEPTH": "4",
+  "HYPHE_DOWNLOAD_DELAY": "2",
+  "HYPHE_MAX_SIM_REQ": "13",
+  "HYPHE_HOST_MAX_SIM_REQ": "2",
+  "HYPHE_PROXY_PORT": "1",
+  "HYPHE_STORE_CRAWLED_HTML": "true",
+  "HYPHE_TRAPH_KEEPALIVE": "1801",
+  "HYPHE_TRAPH_MAX_SIM_PAGES": "251",
+  "HYPHE_OPEN_CORS_API": "true",
+  "HYPHE_DEFAULT_STARTPAGES_MODE": "[\"homepage\",\"pages-6\"]",
+  "HYPHE_CREATION_RULES": "{\"twitter.com\":\"path-1\"}"
+}
+----
+
+NOTE: All those parameters are set in the files `config-*.env`.
+
+==== Deploy hyphe with text indexation
+
+If you want o deploy hyphe with the text indexation feature,
+you need to add the following parameter in the config : `"COMPOSE_FILE"="docker-compose.yml:docker-compose-text_indexation.yml"`
+
+The `COMPOSE_FILE` is set as a global variable on the server, so docker will launch the adequate docker compose files
+(see https://docs.docker.com/compose/reference/envvars/#compose_file)
+
+
 === Useful links
 
  * Documentation : https://developer.openstack.org/
