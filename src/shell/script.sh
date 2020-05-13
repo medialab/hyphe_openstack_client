@@ -29,6 +29,16 @@ touch /hyphe.env
 # @@_HYPHE_CONFIG_@@
 
 echo
+echo "Loading env"
+source /hyphe.env
+check $?
+# see https://docs.docker.com/compose/reference/envvars/#compose_file
+sudo echo "export COMPOSE_FILE=$COMPOSE_FILE" > /etc/profile.d/hyphe.sh
+check $?
+chmod +x /etc/profile.d/hyphe.sh
+check $?
+
+echo
 echo "Executing install script" >> $LOG_FILE
 ./install.sh >> $LOG_FILE 2>&1
 if [ $? -eq 0 ]; then

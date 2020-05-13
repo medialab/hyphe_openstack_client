@@ -26,7 +26,7 @@ function config_files_fusion() {
     if grep -q "^$key" $1; then
       sudo sed -i "s/$key.*/${key//\//\\/}=${value//\//\\/}/g" $1
     else
-      echo "$key=$value" >> $1
+      sudo echo "$key=$value" >> $1
     fi
   done < $2
 }
@@ -109,15 +109,15 @@ echo " - Global Configuration : http port"
 sudo sed -i 's/PUBLIC_PORT=80/PUBLIC_PORT=81/g' .env
 check $?
 
-echo " - Backend Configuration"
-sudo cp config-backend.env.example config-backend.env
-config_files_fusion ./config-backend.env /hyphe.env
-check $?
-echo " - Frontend Configuration"
-sudo cp config-frontend.env.example config-frontend.env
-config_files_fusion ./config-frontend.env /hyphe.env
-check $?
-rm /hyphe.env
+for file in ./config-*.env.example
+do
+  FILENAME=${file%.*}
+  echo " - Configuration file $FILENAME"
+  sudo cp $file $FILENAME
+  config_files_fusion $FILENAME /hyphe.env
+  check $?
+done
+
 echo " - File system permissions"
 sudo chown -R debian:debian /opt/hyphe
 check $?
