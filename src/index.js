@@ -114,7 +114,7 @@ export class OpenStackClient {
     // Compute the specified service
     const service = this.catalog
       // Get the endpoint list for the specified service
-      .filter(service => {
+      .filter((service) => {
         return service.type === serviceType;
       })
       .shift();
@@ -123,14 +123,14 @@ export class OpenStackClient {
     }
 
     // construct an array of ID for the distinct part
-    const regionIdArray = service.endpoints.map(endpoint => {
+    const regionIdArray = service.endpoints.map((endpoint) => {
       return endpoint.region_id;
     });
 
     return (
       service.endpoints
         // convert
-        .map(endpoint => {
+        .map((endpoint) => {
           return { region_id: endpoint.region_id, region: endpoint.region };
         })
         // Distinct
@@ -186,7 +186,7 @@ export class OpenStackClient {
       "flavors",
     );
     return await Promise.all(
-      flavors.map(flavor => {
+      flavors.map((flavor) => {
         return this.getComputeFlavor(regionId, flavor.id);
       }),
     );
@@ -226,7 +226,7 @@ export class OpenStackClient {
       true,
       "keypairs",
     );
-    return keypairs.map(item => {
+    return keypairs.map((item) => {
       return item.keypair;
     });
   }
@@ -442,7 +442,7 @@ export class OpenStackClient {
       "networks",
     );
     return await Promise.all(
-      networks.map(network => {
+      networks.map((network) => {
         return this.getNetworkNetwork(regionId, network.id);
       }),
     );
@@ -701,8 +701,11 @@ export class OpenStackClient {
     this._checkStringRequiredField("ssh name in config", config.ssh.name);
 
     // Step 1 : Searching image from the name
-    const images = await this.getImages(regionId, { name: config.image });
-    const image = images.shift();
+    // WARNING: here I pass a limit of 500, but it's a hack.
+    // Normally I should follow the `next` link provided in the header of the response.
+    // Does this feature should be added to the _openstackCall ?
+    const images = await this.getImages(regionId, { limit: 500 });
+    const image = images.filter((image) => image.name.startsWith(config.image)).shift();
     if (!image) {
       throw new OpenStackError(`Fail to find image with name ${config.image}`);
     }
@@ -719,7 +722,7 @@ export class OpenStackClient {
     // Step 3 : Create SSH key if needed
     const sshKeys = await this.getComputeKeypairs(regionId);
     let sshKey = sshKeys
-      .filter(item => {
+      .filter((item) => {
         return item.name === config.ssh.name;
       })
       .shift();
@@ -730,7 +733,7 @@ export class OpenStackClient {
     // Step 4 : create a security group with valid rules
     const securityGroupName = "hyphe-security-rules";
     let securityGroup = (await this.getNetworkSecurityGroups(regionId))
-      .filter(group => {
+      .filter((group) => {
         return group.name === securityGroupName;
       })
       .shift();
@@ -767,7 +770,7 @@ export class OpenStackClient {
     let deployScript = script;
     if (config.hyphe_config) {
       const hypheConfig = Object.keys(config.hyphe_config)
-        .map(key => {
+        .map((key) => {
           // prettier-ignore
           return `echo "${key}=${config.hyphe_config[key].replace(/"/g, '\\\"')}" >> hyphe.env`; /* eslint-disable-line */
         })
@@ -914,7 +917,7 @@ export class OpenStackClient {
 
     // Get the endpoint list for the specified service
     const service = this.catalog
-      .filter(service => {
+      .filter((service) => {
         return service.type === serviceType;
       })
       .shift();
@@ -924,7 +927,7 @@ export class OpenStackClient {
 
     // Find the endpoint for type and regionId
     const endpoint = service.endpoints
-      .filter(endpoint => {
+      .filter((endpoint) => {
         return endpoint.interface === type && endpoint.region_id === regionId;
       })
       .shift();
